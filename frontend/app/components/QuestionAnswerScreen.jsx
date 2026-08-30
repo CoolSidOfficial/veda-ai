@@ -7,6 +7,11 @@ import {
   useState,
 } from "react";
 
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
 import {
   ArrowLeft,
   Bell,
@@ -28,33 +33,41 @@ export default function QuestionAnswerScreen({
   results,
   files,
 }) {
-  const extractedData = results?.data || results || {};
+  const extractedData =
+    results?.data || results || {};
 
-  const questions = Array.isArray(extractedData.questions)
+  const questions = Array.isArray(
+    extractedData.questions
+  )
     ? extractedData.questions
     : [];
 
-  const answers = Array.isArray(extractedData.answers)
+  const answers = Array.isArray(
+    extractedData.answers
+  )
     ? extractedData.answers
     : [];
 
-  const unansweredQuestions = Array.isArray(
-    extractedData.unansweredQuestions
-  )
-    ? extractedData.unansweredQuestions
-    : [];
+  const unansweredQuestions =
+    Array.isArray(
+      extractedData.unansweredQuestions
+    )
+      ? extractedData.unansweredQuestions
+      : [];
 
-  const unmatchedAnswers = Array.isArray(
-    extractedData.unmatchedAnswers
-  )
-    ? extractedData.unmatchedAnswers
-    : [];
+  const unmatchedAnswers =
+    Array.isArray(
+      extractedData.unmatchedAnswers
+    )
+      ? extractedData.unmatchedAnswers
+      : [];
 
-  const [selected, setSelected] = useState(
-    questions[0]?.number
-      ? String(questions[0].number)
-      : null
-  );
+  const [selected, setSelected] =
+    useState(
+      questions[0]?.number
+        ? String(questions[0].number)
+        : null
+    );
 
   const [expandedQuestions, setExpandedQuestions] =
     useState(
@@ -63,17 +76,44 @@ export default function QuestionAnswerScreen({
         : []
     );
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [zoom, setZoom] = useState(100);
+  const [currentPage, setCurrentPage] =
+    useState(1);
+
+  const [zoom, setZoom] =
+    useState(100);
+
   const [mobileView, setMobileView] =
     useState("questions");
 
-  const answerImageRef = useRef(null);
+  const answerImageRef =
+    useRef(null);
 
-  const answerSheet = files?.answerSheet;
+  const pdfCanvasRef =
+    useRef(null);
+
+  const pdfContainerRef =
+    useRef(null);
+
+  const answerSheet =
+    files?.answerSheet;
 
   const [answerSheetUrl, setAnswerSheetUrl] =
     useState(null);
+
+  const [pdfDocument, setPdfDocument] =
+    useState(null);
+
+  const [pdfLoading, setPdfLoading] =
+    useState(false);
+
+  const [pdfError, setPdfError] =
+    useState("");
+
+  /*
+   * ==========================================
+   * CREATE LOCAL FILE URL
+   * ==========================================
+   */
 
   useEffect(() => {
     if (!answerSheet) {
@@ -81,7 +121,8 @@ export default function QuestionAnswerScreen({
       return;
     }
 
-    const url = URL.createObjectURL(answerSheet);
+    const url =
+      URL.createObjectURL(answerSheet);
 
     setAnswerSheetUrl(url);
 
@@ -90,92 +131,712 @@ export default function QuestionAnswerScreen({
     };
   }, [answerSheet]);
 
-  const getQuestionId = (question) => {
-    return String(
-      question.id ||
-        `${question.number}${question.sub || ""}`
+  /*
+   * ==========================================
+   * FILE TYPE
+   * ==========================================
+   */
+
+  const isPdf =
+    answerSheet?.type ===
+    "application/pdf";
+
+  const isImage =
+    answerSheet?.type?.startsWith(
+      "image/"
     );
-  };
 
-  const getQuestionNumber = (question) => {
-    return String(question.number);
-  };
+  /*
+   * ==========================================
+   * LOAD PDF
+   * ==========================================
+   */
 
-  const isQuestionUnanswered = (question) => {
-    const number = getQuestionNumber(question);
-
-    return unansweredQuestions.some(
-      (item) =>
-        String(item.questionNumber) === number
-    );
-  };
-
-  const getAnswerForQuestion = (question) => {
-    const number = getQuestionNumber(question);
-
-    return answers.find(
-      (answer) =>
-        String(answer.questionNumber) === number
-    );
-  };
-
-  const selectedQuestion = questions.find(
-    (question) =>
-      getQuestionId(question) === selected
-  );
-
-  const selectedAnswer = selectedQuestion
-    ? getAnswerForQuestion(selectedQuestion)
-    : null;
-
-  const selectedRegions = useMemo(() => {
-    if (!selectedAnswer?.regions) {
-      return [];
+  useEffect(() => {
+    if (
+      !answerSheetUrl ||
+      !isPdf
+    ) {
+      setPdfDocument(null);
+      setPdfError("");
+      return;
     }
 
-    return selectedAnswer.regions.filter(
-      (region) =>
-        Number(region.page) === currentPage
-    );
-  }, [selectedAnswer, currentPage]);
+    let cancelled = false;
 
-  const totalPages = useMemo(() => {
-    let highestPage = 1;
+    const loadPdf = async () => {
+      try {
+        setPdfLoading(true);
+        setPdfError("");
 
-    const collectPages = (items) => {
-      items.forEach((item) => {
-        if (!Array.isArray(item?.regions)) {
+        console.log(
+          "Loading PDF:",
+          answerSheetUrl
+        );
+
+        const loadingTask =
+          pdfjsLib.getDocument({
+            url: answerSheetUrl,
+          });
+
+        const pdf =
+          await loadingTask.promise;
+
+        if (cancelled) {
           return;
         }
 
-        item.regions.forEach((region) => {
-          const page = Number(region?.page);
+        setPdfDocument(pdf);
 
-          if (
-            Number.isFinite(page) &&
-            page > highestPage
-          ) {
-            highestPage = page;
-          }
-        });
-      });
+        console.log(
+          "PDF loaded successfully:",
+          pdf.numPages,
+          "pages"
+        );
+      } catch (error) {
+        console.error(
+          "Failed to load PDF:",
+          error
+        );
+
+        if (!cancelled) {
+          setPdfDocument(null);
+          setPdfError(
+            "Unable to load the PDF."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setPdfLoading(false);
+        }
+      }
     };
 
-    collectPages(answers);
-    collectPages(unmatchedAnswers);
+    loadPdf();
 
-    return highestPage;
-  }, [answers, unmatchedAnswers]);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    answerSheetUrl,
+    isPdf,
+  ]);
 
-  const getRegionStyle = (bbox) => {
+  /*
+   * ==========================================
+   * QUESTION HELPERS
+   * ==========================================
+   */
+
+  const getQuestionId = (
+    question
+  ) => {
+    return String(
+      question.id ||
+        `${question.number}${
+          question.sub || ""
+        }`
+    );
+  };
+
+  const getQuestionNumber = (
+    question
+  ) => {
+    return String(
+      question.number
+    );
+  };
+
+  /*
+   * ==========================================
+   * NORMALIZE QUESTION NUMBER
+   * ==========================================
+   */
+
+  const normalizeQuestionNumber = (
+    value
+  ) => {
+    if (
+      value === null ||
+      value === undefined
+    ) {
+      return "";
+    }
+
+    return String(value)
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "")
+      .replace(/^question/i, "")
+      .replace(/^q/i, "")
+      .replace(/[.)]+$/g, "")
+      .replace(/[()]/g, "");
+  };
+
+  /*
+   * ==========================================
+   * CHECK UNANSWERED
+   * ==========================================
+   */
+
+  const isQuestionUnanswered = (
+    question
+  ) => {
+    const number =
+      normalizeQuestionNumber(
+        question.number
+      );
+
+    const sub =
+      normalizeQuestionNumber(
+        question.sub
+      );
+
+    return unansweredQuestions.some(
+      (item) => {
+        const itemNumber =
+          normalizeQuestionNumber(
+            item.questionNumber ??
+              item.question_number ??
+              item.number ??
+              item.question
+          );
+
+        if (sub) {
+          return (
+            itemNumber ===
+              `${number}${sub}` ||
+            itemNumber ===
+              `${number}${sub}`.replace(
+                /[()]/g,
+                ""
+              )
+          );
+        }
+
+        return (
+          itemNumber === number
+        );
+      }
+    );
+  };
+
+  /*
+   * ==========================================
+   * ANSWER MATCHING
+   * ==========================================
+   */
+
+  const getAnswerForQuestion = (
+    question
+  ) => {
+    const questionNumber =
+      normalizeQuestionNumber(
+        question.number
+      );
+
+    const questionSub =
+      normalizeQuestionNumber(
+        question.sub
+      );
+
+    if (!questionNumber) {
+      return undefined;
+    }
+
+    return answers.find(
+      (answer) => {
+        /*
+         * Gemini may return the question
+         * identifier under slightly different
+         * field names.
+         */
+
+        const rawAnswerNumber =
+          answer.questionNumber ??
+          answer.question_number ??
+          answer.number ??
+          answer.question;
+
+        const answerNumber =
+          normalizeQuestionNumber(
+            rawAnswerNumber
+          );
+
+        if (!answerNumber) {
+          return false;
+        }
+
+        /*
+         * ======================================
+         * NORMAL QUESTIONS
+         *
+         * 1  -> 1
+         * Q1 -> 1
+         * 1. -> 1
+         * ======================================
+         */
+
+        if (!questionSub) {
+          return (
+            answerNumber ===
+            questionNumber
+          );
+        }
+
+        /*
+         * ======================================
+         * SUB QUESTIONS
+         *
+         * 11(a)
+         * 11a
+         * 11.a
+         * Q11(a)
+         *
+         * all normalize to 11a
+         * ======================================
+         */
+
+        const combined =
+          `${questionNumber}${questionSub}`;
+
+        return (
+          answerNumber === combined
+        );
+      }
+    );
+  };
+
+  /*
+   * ==========================================
+   * SELECTED QUESTION
+   * ==========================================
+   */
+
+  const selectedQuestion =
+    questions.find(
+      (question) =>
+        getQuestionId(
+          question
+        ) === selected
+    );
+
+  const selectedAnswer =
+    selectedQuestion
+      ? getAnswerForQuestion(
+          selectedQuestion
+        )
+      : null;
+
+  /*
+   * ==========================================
+   * SELECTED REGIONS
+   * ==========================================
+   */
+
+  const selectedRegions =
+    useMemo(() => {
+      if (
+        !selectedAnswer?.regions
+      ) {
+        return [];
+      }
+
+      return selectedAnswer.regions.filter(
+        (region) =>
+          Number(region.page) ===
+          currentPage
+      );
+    }, [
+      selectedAnswer,
+      currentPage,
+    ]);
+
+  /*
+   * ==========================================
+   * TOTAL PAGES
+   * ==========================================
+   */
+
+  const totalPages =
+    useMemo(() => {
+      if (pdfDocument) {
+        return pdfDocument.numPages;
+      }
+
+      let highestPage = 1;
+
+      const collectPages = (
+        items
+      ) => {
+        items.forEach(
+          (item) => {
+            if (
+              !Array.isArray(
+                item?.regions
+              )
+            ) {
+              return;
+            }
+
+            item.regions.forEach(
+              (region) => {
+                const page =
+                  Number(
+                    region?.page
+                  );
+
+                if (
+                  Number.isFinite(
+                    page
+                  ) &&
+                  page >
+                    highestPage
+                ) {
+                  highestPage =
+                    page;
+                }
+              }
+            );
+          }
+        );
+      };
+
+      collectPages(answers);
+
+      collectPages(
+        unmatchedAnswers
+      );
+
+      return highestPage;
+    }, [
+      pdfDocument,
+      answers,
+      unmatchedAnswers,
+    ]);
+
+  /*
+   * ==========================================
+   * PDF PAGE RENDERING
+   * ==========================================
+   */
+
+  useEffect(() => {
+    if (
+      !pdfDocument ||
+      !pdfCanvasRef.current ||
+      !pdfContainerRef.current
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const renderPage = async () => {
+      try {
+        const page =
+          await pdfDocument.getPage(
+            currentPage
+          );
+
+        if (cancelled) {
+          return;
+        }
+
+        const baseViewport =
+          page.getViewport({
+            scale: 1,
+          });
+
+        const containerWidth =
+          pdfContainerRef.current
+            .clientWidth;
+
+        const targetWidth =
+          Math.min(
+            720,
+            Math.max(
+              280,
+              containerWidth
+            )
+          );
+
+        const baseScale =
+          targetWidth /
+          baseViewport.width;
+
+        const viewport =
+          page.getViewport({
+            scale: baseScale,
+          });
+
+        const canvas =
+          pdfCanvasRef.current;
+
+        const context =
+          canvas.getContext(
+            "2d"
+          );
+
+        const deviceScale =
+          window.devicePixelRatio ||
+          1;
+
+        canvas.width =
+          Math.floor(
+            viewport.width *
+              deviceScale
+          );
+
+        canvas.height =
+          Math.floor(
+            viewport.height *
+              deviceScale
+          );
+
+        canvas.style.width =
+          `${viewport.width}px`;
+
+        canvas.style.height =
+          `${viewport.height}px`;
+
+        context.setTransform(
+          deviceScale,
+          0,
+          0,
+          deviceScale,
+          0,
+          0
+        );
+
+        await page.render({
+          canvasContext:
+            context,
+          viewport,
+        }).promise;
+
+      } catch (error) {
+        if (!cancelled) {
+          console.error(
+            "Failed to render PDF page:",
+            error
+          );
+        }
+      }
+    };
+
+    renderPage();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    pdfDocument,
+    currentPage,
+    mobileView,
+  ]);
+
+  /*
+   * ==========================================
+   * PDF RESIZE
+   * ==========================================
+   */
+
+  useEffect(() => {
+    if (!pdfDocument) {
+      return;
+    }
+
+    let resizeTimer;
+
+    const handleResize = () => {
+      clearTimeout(
+        resizeTimer
+      );
+
+      resizeTimer =
+        setTimeout(() => {
+          if (
+            !pdfCanvasRef.current ||
+            !pdfContainerRef.current
+          ) {
+            return;
+          }
+
+          window.dispatchEvent(
+            new Event(
+              "pdf-resize"
+            )
+          );
+        }, 100);
+    };
+
+    window.addEventListener(
+      "resize",
+      handleResize
+    );
+
+    return () => {
+      clearTimeout(
+        resizeTimer
+      );
+
+      window.removeEventListener(
+        "resize",
+        handleResize
+      );
+    };
+  }, [pdfDocument]);
+
+  /*
+   * ==========================================
+   * PDF RESIZE RENDER LISTENER
+   * ==========================================
+   */
+
+  useEffect(() => {
+    const handlePdfResize = () => {
+      if (!pdfDocument) {
+        return;
+      }
+
+      const render = async () => {
+        if (
+          !pdfCanvasRef.current ||
+          !pdfContainerRef.current
+        ) {
+          return;
+        }
+
+        try {
+          const page =
+            await pdfDocument.getPage(
+              currentPage
+            );
+
+          const baseViewport =
+            page.getViewport({
+              scale: 1,
+            });
+
+          const containerWidth =
+            pdfContainerRef.current
+              .clientWidth;
+
+          const targetWidth =
+            Math.min(
+              720,
+              Math.max(
+                280,
+                containerWidth
+              )
+            );
+
+          const scale =
+            targetWidth /
+            baseViewport.width;
+
+          const viewport =
+            page.getViewport({
+              scale,
+            });
+
+          const canvas =
+            pdfCanvasRef.current;
+
+          const context =
+            canvas.getContext(
+              "2d"
+            );
+
+          const deviceScale =
+            window.devicePixelRatio ||
+            1;
+
+          canvas.width =
+            Math.floor(
+              viewport.width *
+                deviceScale
+            );
+
+          canvas.height =
+            Math.floor(
+              viewport.height *
+                deviceScale
+            );
+
+          canvas.style.width =
+            `${viewport.width}px`;
+
+          canvas.style.height =
+            `${viewport.height}px`;
+
+          context.setTransform(
+            deviceScale,
+            0,
+            0,
+            deviceScale,
+            0,
+            0
+          );
+
+          await page.render({
+            canvasContext:
+              context,
+            viewport,
+          }).promise;
+
+        } catch (error) {
+          console.error(
+            "Failed to resize PDF:",
+            error
+          );
+        }
+      };
+
+      render();
+    };
+
+    window.addEventListener(
+      "pdf-resize",
+      handlePdfResize
+    );
+
+    return () => {
+      window.removeEventListener(
+        "pdf-resize",
+        handlePdfResize
+      );
+    };
+  }, [
+    pdfDocument,
+    currentPage,
+  ]);
+
+  /*
+   * ==========================================
+   * BBOX
+   * ==========================================
+   */
+
+  const getRegionStyle = (
+    bbox
+  ) => {
     if (!bbox) {
       return null;
     }
 
-    const x = Number(bbox.x);
-    const y = Number(bbox.y);
-    const width = Number(bbox.width);
-    const height = Number(bbox.height);
+    const x =
+      Number(bbox.x);
+
+    const y =
+      Number(bbox.y);
+
+    const width =
+      Number(bbox.width);
+
+    const height =
+      Number(bbox.height);
 
     if (
       !Number.isFinite(x) ||
@@ -187,51 +848,98 @@ export default function QuestionAnswerScreen({
     }
 
     return {
-      left: `${(x / 1000) * 100}%`,
-      top: `${(y / 1000) * 100}%`,
-      width: `${(width / 1000) * 100}%`,
-      height: `${(height / 1000) * 100}%`,
+      left:
+        `${(x / 1000) * 100}%`,
+
+      top:
+        `${(y / 1000) * 100}%`,
+
+      width:
+        `${(width / 1000) * 100}%`,
+
+      height:
+        `${(height / 1000) * 100}%`,
     };
   };
 
-  const toggleQuestion = (question) => {
-    const id = getQuestionId(question);
+  /*
+   * ==========================================
+   * QUESTION SELECTION
+   * ==========================================
+   */
+
+  const toggleQuestion = (
+    question
+  ) => {
+    const id =
+      getQuestionId(
+        question
+      );
 
     setSelected(id);
 
     const answer =
-      getAnswerForQuestion(question);
-
-    if (answer?.regions?.length) {
-      const firstPage = Number(
-        answer.regions[0]?.page
+      getAnswerForQuestion(
+        question
       );
 
+    if (
+      answer?.regions?.length
+    ) {
+      const firstPage =
+        Number(
+          answer.regions[0]?.page
+        );
+
       if (
-        Number.isFinite(firstPage) &&
+        Number.isFinite(
+          firstPage
+        ) &&
         firstPage >= 1 &&
         firstPage <= totalPages
       ) {
-        setCurrentPage(firstPage);
+        setCurrentPage(
+          firstPage
+        );
       }
     }
 
-    setExpandedQuestions((previous) => {
-      if (previous.includes(id)) {
-        return previous.filter(
-          (questionId) =>
-            questionId !== id
-        );
-      }
+    setMobileView(
+      "answers"
+    );
 
-      return [...previous, id];
-    });
+    setExpandedQuestions(
+      (previous) => {
+        if (
+          previous.includes(id)
+        ) {
+          return previous.filter(
+            (questionId) =>
+              questionId !== id
+          );
+        }
+
+        return [
+          ...previous,
+          id,
+        ];
+      }
+    );
   };
+
+  /*
+   * ==========================================
+   * EXPAND / COLLAPSE
+   * ==========================================
+   */
 
   const expandAll = () => {
     setExpandedQuestions(
-      questions.map((question) =>
-        getQuestionId(question)
+      questions.map(
+        (question) =>
+          getQuestionId(
+            question
+          )
       )
     );
   };
@@ -245,13 +953,26 @@ export default function QuestionAnswerScreen({
     expandedQuestions.length ===
       questions.length;
 
-  const getScore = (question) => {
+  /*
+   * ==========================================
+   * SCORE
+   * ==========================================
+   */
+
+  const getScore = (
+    question
+  ) => {
     const answer =
-      getAnswerForQuestion(question);
+      getAnswerForQuestion(
+        question
+      );
 
     if (answer) {
-      const score = answer.score;
-      const maxScore = answer.maxScore;
+      const score =
+        answer.score;
+
+      const maxScore =
+        answer.maxScore;
 
       if (
         score !== null &&
@@ -270,8 +991,13 @@ export default function QuestionAnswerScreen({
       }
     }
 
-    if (isQuestionUnanswered(question)) {
-      const maxScore = question.maxScore;
+    if (
+      isQuestionUnanswered(
+        question
+      )
+    ) {
+      const maxScore =
+        question.maxScore;
 
       if (
         maxScore !== null &&
@@ -286,26 +1012,54 @@ export default function QuestionAnswerScreen({
     return "—";
   };
 
-  const getFeedback = (question) => {
+  /*
+   * ==========================================
+   * FEEDBACK
+   * ==========================================
+   */
+
+  const getFeedback = (
+    question
+  ) => {
     const answer =
-      getAnswerForQuestion(question);
+      getAnswerForQuestion(
+        question
+      );
 
     if (answer?.feedback) {
       return answer.feedback;
     }
 
-    if (isQuestionUnanswered(question)) {
+    if (
+      isQuestionUnanswered(
+        question
+      )
+    ) {
       return "No answer was found for this question.";
     }
 
     return "No AI feedback is available for this question.";
   };
 
-  const getScoreStyle = (question) => {
-    const answer =
-      getAnswerForQuestion(question);
+  /*
+   * ==========================================
+   * SCORE STYLE
+   * ==========================================
+   */
 
-    if (isQuestionUnanswered(question)) {
+  const getScoreStyle = (
+    question
+  ) => {
+    const answer =
+      getAnswerForQuestion(
+        question
+      );
+
+    if (
+      isQuestionUnanswered(
+        question
+      )
+    ) {
       return "bg-[#f1f1f1] text-[#888888]";
     }
 
@@ -313,8 +1067,11 @@ export default function QuestionAnswerScreen({
       return "bg-[#fff0e9] text-[#ef6847]";
     }
 
-    const score = Number(answer.score);
-    const maxScore = Number(answer.maxScore);
+    const score =
+      Number(answer.score);
+
+    const maxScore =
+      Number(answer.maxScore);
 
     if (
       Number.isFinite(score) &&
@@ -322,13 +1079,18 @@ export default function QuestionAnswerScreen({
       maxScore > 0
     ) {
       const percentage =
-        (score / maxScore) * 100;
+        (score / maxScore) *
+        100;
 
-      if (percentage >= 80) {
+      if (
+        percentage >= 80
+      ) {
         return "bg-[#e6f7e4] text-[#3fa43b]";
       }
 
-      if (percentage >= 50) {
+      if (
+        percentage >= 50
+      ) {
         return "bg-[#fff2df] text-[#d98928]";
       }
 
@@ -338,9 +1100,19 @@ export default function QuestionAnswerScreen({
     return "bg-[#e6f7e4] text-[#3fa43b]";
   };
 
-  const getFeedbackScore = (question) => {
+  /*
+   * ==========================================
+   * FEEDBACK SCORE
+   * ==========================================
+   */
+
+  const getFeedbackScore = (
+    question
+  ) => {
     const answer =
-      getAnswerForQuestion(question);
+      getAnswerForQuestion(
+        question
+      );
 
     if (!answer) {
       return null;
@@ -363,43 +1135,70 @@ export default function QuestionAnswerScreen({
     return `${answer.score} / ${answer.maxScore}`;
   };
 
-  const isPdf =
-    answerSheet?.type === "application/pdf";
-
-  const isImage =
-    answerSheet?.type?.startsWith("image/");
+  /*
+   * ==========================================
+   * ZOOM
+   * ==========================================
+   */
 
   const zoomIn = () => {
-    setZoom((previous) =>
-      Math.min(previous + 10, 150)
+    setZoom(
+      (previous) =>
+        Math.min(
+          previous + 10,
+          150
+        )
     );
   };
 
   const zoomOut = () => {
-    setZoom((previous) =>
-      Math.max(previous - 10, 70)
+    setZoom(
+      (previous) =>
+        Math.max(
+          previous - 10,
+          70
+        )
     );
   };
 
+  /*
+   * ==========================================
+   * PAGE NAVIGATION
+   * ==========================================
+   */
+
   const previousPage = () => {
-    setCurrentPage((previous) =>
-      Math.max(previous - 1, 1)
+    setCurrentPage(
+      (previous) =>
+        Math.max(
+          previous - 1,
+          1
+        )
     );
   };
 
   const nextPage = () => {
-    setCurrentPage((previous) =>
-      Math.min(
-        previous + 1,
-        totalPages
-      )
+    setCurrentPage(
+      (previous) =>
+        Math.min(
+          previous + 1,
+          totalPages
+        )
     );
   };
+
+  /*
+   * ==========================================
+   * EMPTY STATE
+   * ==========================================
+   */
 
   if (!questions.length) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#f5f5f5]">
+
         <div className="text-center">
+
           <h1 className="text-xl font-semibold">
             No questions extracted
           </h1>
@@ -407,13 +1206,23 @@ export default function QuestionAnswerScreen({
           <p className="mt-2 text-sm text-gray-500">
             Gemini did not return any questions.
           </p>
+
         </div>
+
       </main>
     );
   }
 
+  /*
+   * ==========================================
+   * UI
+   * ==========================================
+   */
+
   return (
     <main className="h-screen overflow-hidden bg-[#cecece] text-[#303030]">
+
+      {/* HEADER */}
 
       <header className="fixed left-[10px] right-[10px] top-[12px] z-50 flex h-[56px] items-center justify-between rounded-[16px] bg-white px-3 lg:left-[86px] lg:right-[13px] lg:top-[12px] lg:px-5">
 
@@ -470,14 +1279,20 @@ export default function QuestionAnswerScreen({
 
       </header>
 
+      {/* BODY */}
+
       <div className="flex h-full overflow-hidden pt-[80px]">
+
+        {/* SIDEBAR */}
 
         <aside className="fixed left-[10px] top-[80px] hidden h-[calc(100vh-91px)] w-[64px] shrink-0 flex-col items-center rounded-[16px] bg-white py-4 shadow-sm lg:flex">
 
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#303030]">
+
             <span className="text-lg font-black text-white">
               V
             </span>
+
           </div>
 
           <button className="mt-7 flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#ff8d36] bg-[#292929] text-white">
@@ -504,13 +1319,17 @@ export default function QuestionAnswerScreen({
 
         <div className="flex min-w-0 flex-1 flex-col lg:ml-[74px]">
 
+          {/* MOBILE TOGGLE */}
+
           <div className="flex justify-center px-[18px] pt-[10px] lg:hidden">
 
             <div className="flex h-[40px] w-full max-w-[357px] rounded-full bg-[#bcbcbc] p-[3px]">
 
               <button
                 onClick={() =>
-                  setMobileView("questions")
+                  setMobileView(
+                    "questions"
+                  )
                 }
                 className={`
                   flex-1
@@ -531,7 +1350,9 @@ export default function QuestionAnswerScreen({
 
               <button
                 onClick={() =>
-                  setMobileView("answers")
+                  setMobileView(
+                    "answers"
+                  )
                 }
                 className={`
                   flex-1
@@ -556,6 +1377,8 @@ export default function QuestionAnswerScreen({
 
           <div className="flex min-h-0 flex-1 overflow-hidden pt-[10px] lg:pt-0">
 
+            {/* QUESTIONS */}
+
             <section
               className={`
                 w-full
@@ -576,12 +1399,14 @@ export default function QuestionAnswerScreen({
               <div className="flex min-h-[64px] items-center justify-between px-[18px] lg:px-5">
 
                 <h2 className="text-[16px] font-semibold">
+
                   Extracted Questions
 
                   <span className="font-normal text-[#777777]">
                     {" "}
                     (from question paper)
                   </span>
+
                 </h2>
 
                 <button
@@ -617,16 +1442,6 @@ export default function QuestionAnswerScreen({
                       const isExpanded =
                         expandedQuestions.includes(
                           id
-                        );
-
-                      const answer =
-                        getAnswerForQuestion(
-                          question
-                        );
-
-                      const unanswered =
-                        isQuestionUnanswered(
-                          question
                         );
 
                       return (
@@ -700,11 +1515,17 @@ export default function QuestionAnswerScreen({
                             </div>
 
                             <div className="pt-1 text-[#777777]">
+
                               {isExpanded ? (
-                                <ChevronUp size={17} />
+                                <ChevronUp
+                                  size={17}
+                                />
                               ) : (
-                                <ChevronDown size={17} />
+                                <ChevronDown
+                                  size={17}
+                                />
                               )}
+
                             </div>
 
                           </button>
@@ -718,32 +1539,17 @@ export default function QuestionAnswerScreen({
                                   AI Feedback
                                 </p>
 
-                                <div className="flex items-center gap-2">
-
-                                  {getFeedbackScore(
-                                    question
-                                  ) && (
-                                    <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-[#555555]">
-                                      {
-                                        getFeedbackScore(
-                                          question
-                                        )
-                                      }
-                                    </span>
-                                  )}
-
-                                  {answer?.confidence != null && (
-                                    <span className="text-[10px] text-[#888888]">
-                                      {Math.round(
-                                        Number(
-                                          answer.confidence
-                                        ) * 100
-                                      )}
-                                      %
-                                    </span>
-                                  )}
-
-                                </div>
+                                {getFeedbackScore(
+                                  question
+                                ) && (
+                                  <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-[#555555]">
+                                    {
+                                      getFeedbackScore(
+                                        question
+                                      )
+                                    }
+                                  </span>
+                                )}
 
                               </div>
 
@@ -752,8 +1558,6 @@ export default function QuestionAnswerScreen({
                                   question
                                 )}
                               </p>
-
-                              
 
                             </div>
                           )}
@@ -768,6 +1572,8 @@ export default function QuestionAnswerScreen({
               </div>
 
             </section>
+
+            {/* ANSWER SHEET */}
 
             <section
               className={`
@@ -785,6 +1591,8 @@ export default function QuestionAnswerScreen({
               `}
             >
 
+              {/* ANSWER TOOLBAR */}
+
               <div className="flex h-[58px] shrink-0 items-center justify-between bg-[#292929] px-4 text-white lg:px-5">
 
                 <span className="text-[14px] font-medium">
@@ -794,10 +1602,14 @@ export default function QuestionAnswerScreen({
                 <div className="flex items-center gap-2">
 
                   <button
-                    onClick={zoomOut}
+                    onClick={
+                      zoomOut
+                    }
                     className="flex h-8 w-8 items-center justify-center rounded-md bg-[#414141]"
                   >
-                    <ZoomOut size={14} />
+                    <ZoomOut
+                      size={14}
+                    />
                   </button>
 
                   <span className="min-w-[35px] text-center text-[11px]">
@@ -805,10 +1617,14 @@ export default function QuestionAnswerScreen({
                   </span>
 
                   <button
-                    onClick={zoomIn}
+                    onClick={
+                      zoomIn
+                    }
                     className="flex h-8 w-8 items-center justify-center rounded-md bg-[#414141]"
                   >
-                    <ZoomIn size={14} />
+                    <ZoomIn
+                      size={14}
+                    />
                   </button>
 
                   <div className="ml-2 flex h-8 items-center gap-2 rounded-md bg-[#414141] px-2 lg:ml-3 lg:px-3">
@@ -818,7 +1634,8 @@ export default function QuestionAnswerScreen({
                         previousPage
                       }
                       disabled={
-                        currentPage === 1
+                        currentPage ===
+                        1
                       }
                       className="disabled:opacity-40"
                     >
@@ -829,12 +1646,15 @@ export default function QuestionAnswerScreen({
 
                     <span className="whitespace-nowrap text-[10px]">
                       Page{" "}
-                      {currentPage} of{" "}
+                      {currentPage}{" "}
+                      of{" "}
                       {totalPages}
                     </span>
 
                     <button
-                      onClick={nextPage}
+                      onClick={
+                        nextPage
+                      }
                       disabled={
                         currentPage ===
                         totalPages
@@ -852,14 +1672,20 @@ export default function QuestionAnswerScreen({
 
               </div>
 
+              {/* DOCUMENT AREA */}
+
               <div className="flex-1 overflow-auto p-4 lg:p-6">
 
                 <div
                   className="mx-auto w-fit"
                   style={{
-                    zoom: `${zoom}%`,
+                    transform: `scale(${zoom / 100})`,
+                    transformOrigin:
+                      "top center",
                   }}
                 >
+
+                  {/* IMAGE */}
 
                   {isImage &&
                     answerSheetUrl && (
@@ -895,7 +1721,7 @@ export default function QuestionAnswerScreen({
 
                             return (
                               <div
-                                key={`${selected}-${currentPage}-${index}`}
+                                key={`${currentPage}-${index}`}
                                 className="pointer-events-none absolute rounded-[8px] border-[3px] border-[#65bd55] bg-[#7ddc6e]/20 shadow-[0_0_0_2px_rgba(255,255,255,0.7)]"
                                 style={
                                   regionStyle
@@ -903,10 +1729,13 @@ export default function QuestionAnswerScreen({
                               >
 
                                 <span className="absolute -left-[3px] -top-[27px] rounded-t-[6px] bg-[#65bd55] px-3 py-1 text-[10px] font-semibold whitespace-nowrap text-white">
-                                  Q
-                                  {
-                                    selectedQuestion?.number
-                                  }
+                                  {`Q${String(
+                                    selectedQuestion?.number ||
+                                      ""
+                                  ).replace(
+                                    /^Q/i,
+                                    ""
+                                  )}`}
                                 </span>
 
                               </div>
@@ -917,34 +1746,95 @@ export default function QuestionAnswerScreen({
                       </div>
                     )}
 
+                  {/* PDF */}
+
                   {isPdf &&
                     answerSheetUrl && (
                       <div className="relative">
 
-                        <iframe
-                          src={
-                            answerSheetUrl
-                          }
-                          title="Student answer sheet"
-                          className="h-[900px] w-[calc(100vw-36px)] max-w-[720px] border-0 bg-white shadow-lg lg:w-[720px]"
-                        />
+                        {pdfLoading && (
+                          <div className="flex h-[600px] w-[calc(100vw-36px)] max-w-[720px] items-center justify-center bg-white text-sm text-[#888888] shadow-lg lg:w-[720px]">
+                            Loading answer sheet...
+                          </div>
+                        )}
 
-                        {selectedAnswer &&
-                          selectedRegions.length >
-                            0 && (
-                            <div className="mt-3 rounded-lg bg-white px-4 py-3 text-[11px] text-[#777777] shadow-sm">
-                              Answer detected on
-                              page{" "}
-                              {currentPage}.
+                        {!pdfLoading &&
+                          pdfError && (
+                            <div className="flex h-[600px] w-[calc(100vw-36px)] max-w-[720px] items-center justify-center bg-white text-sm text-[#e85e3f] shadow-lg lg:w-[720px]">
+                              {pdfError}
+                            </div>
+                          )}
+
+                        {!pdfLoading &&
+                          !pdfError &&
+                          pdfDocument && (
+                            <div
+                              ref={
+                                pdfContainerRef
+                              }
+                              className="relative w-[calc(100vw-36px)] max-w-[720px] bg-white shadow-lg lg:w-[720px]"
+                            >
+
+                              <canvas
+                                ref={
+                                  pdfCanvasRef
+                                }
+                                className="block h-auto w-full"
+                              />
+
+                              {selectedRegions.map(
+                                (
+                                  region,
+                                  index
+                                ) => {
+
+                                  const regionStyle =
+                                    getRegionStyle(
+                                      region.bbox
+                                    );
+
+                                  if (
+                                    !regionStyle
+                                  ) {
+                                    return null;
+                                  }
+
+                                  return (
+                                    <div
+                                      key={`${currentPage}-${index}`}
+                                      className="pointer-events-none absolute rounded-[8px] border-[3px] border-[#65bd55] bg-[#7ddc6e]/20 shadow-[0_0_0_2px_rgba(255,255,255,0.7)]"
+                                      style={
+                                        regionStyle
+                                      }
+                                    >
+
+                                      <span className="absolute -left-[3px] -top-[27px] rounded-t-[6px] bg-[#65bd55] px-3 py-1 text-[10px] font-semibold whitespace-nowrap text-white">
+                                        {`Q${String(
+                                          selectedQuestion?.number ||
+                                            ""
+                                        ).replace(
+                                          /^Q/i,
+                                          ""
+                                        )}`}
+                                      </span>
+
+                                    </div>
+                                  );
+                                }
+                              )}
+
                             </div>
                           )}
 
                       </div>
                     )}
 
+                  {/* NO FILE */}
+
                   {!answerSheetUrl && (
                     <div className="flex h-[600px] w-[calc(100vw-36px)] max-w-[600px] items-center justify-center bg-white text-center text-sm text-gray-500 shadow-lg">
-                      Answer sheet preview
+                      Answer sheet
+                      preview
                       unavailable.
                     </div>
                   )}
@@ -962,7 +1852,9 @@ export default function QuestionAnswerScreen({
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 z-50 flex h-4 items-center justify-center lg:hidden">
+
         <div className="h-0 w-[128px] border-t-[5px] border-[rgba(48,48,48,0.5)]" />
+
       </div>
 
     </main>
