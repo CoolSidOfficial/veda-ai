@@ -39,6 +39,8 @@ export default function Page() {
       {screen === "results" && (
         <QuestionAnswerScreen
           results={results}
+            files={files}
+
         />
       )}
     </>
