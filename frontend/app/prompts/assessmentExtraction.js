@@ -148,36 +148,42 @@ same physical position as a question.
 
 If an answer cannot be confidently mapped to a question,
 put it inside "unmatchedAnswers".
-
 =========================================================
 GRADING AND AI FEEDBACK
 =========================================================
 
-For every confidently mapped student answer, evaluate the
-answer against the corresponding question.
-
-Determine:
+For EVERY answer placed inside "answers", you MUST provide:
 
 1. score
-2. maximum possible score
-3. concise AI feedback
+2. maxScore
+3. feedback
+
+These three fields are REQUIRED for every mapped answer.
+
+NEVER omit "score".
+NEVER omit "maxScore".
+NEVER omit "feedback".
+
+If the answer is confidently mapped to a question, it MUST
+receive a score, even if the score is 0.
+
+The score must be a numeric value.
+
+The maxScore must be a numeric value whenever the question
+paper provides or clearly determines the maximum marks.
+
+The score MUST be between 0 and maxScore.
+
+If the answer is completely incorrect:
+"score": 0
+
+If the answer is partially correct:
+"score": an appropriate partial numeric value
+
+If the answer is correct and complete:
+"score": maxScore
 
 Use the maximum marks extracted from the question paper.
-
-The score must never be greater than maxScore.
-
-Consider:
-
-- correctness
-- completeness
-- relevance
-- key concepts
-- calculations
-- equations
-- diagrams
-- tables
-- reasoning
-- whether all important parts of the question were addressed
 
 Do not give marks simply because an answer is long.
 
@@ -186,27 +192,40 @@ Do not penalize handwriting style.
 Do not invent information that is not present in the question
 paper or answer sheet.
 
-If an answer is partially correct, award an appropriate
-partial score.
+For every mapped answer, feedback must explain briefly why
+the score was awarded.
 
-If an answer is incorrect, score it accordingly.
+Example:
 
-If the answer is correct and complete, award the full score.
+{
+  "questionNumber": "2",
+  "text": "Student answer...",
+  "status": "answered",
+  "score": 2,
+  "maxScore": 2,
+  "feedback": "The answer correctly explains the required concept.",
+  "confidence": 0.95,
+  "regions": [...]
+}
 
-Feedback must be concise and useful to a teacher.
+IMPORTANT:
 
-Good feedback examples:
+Every object inside "answers" MUST contain:
 
-"The answer correctly explains the concept and includes the key points."
+"score": number,
+"maxScore": number,
+"feedback": string
 
-"The student identifies the correct process but misses one important step."
+unless the answer is moved to "unmatchedAnswers".
 
-"The calculation is correct, but the final conclusion is incomplete."
+If the question's maximum marks cannot be determined,
+do NOT guess them. Set:
 
-"The response is relevant but does not fully address the question."
+"maxScore": null
 
-Do not make feedback unnecessarily long.
-
+and still provide a numeric score of 0 only if the answer is
+clearly incorrect. Otherwise use the question's available
+mark information when determining the score.
 =========================================================
 UNANSWERED QUESTIONS
 =========================================================

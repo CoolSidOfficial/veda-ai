@@ -62,17 +62,315 @@ export default function QuestionAnswerScreen({
       ? extractedData.unmatchedAnswers
       : [];
 
+  /*
+   * ==========================================
+   * QUESTION HELPERS
+   * ==========================================
+   */
+
+  /*
+   * Normalize all possible question formats
+   *
+   * Q1      -> 1
+   * q1      -> 1
+   * 1       -> 1
+   * 1.      -> 1
+   * Q 1     -> 1
+   *
+   * 11(a)   -> 11a
+   * 11 (a)  -> 11a
+   * Q11(a)  -> 11a
+   * 11.a    -> 11a
+   */
+  const normalizeQuestionNumber = (
+    value
+  ) => {
+    if (
+      value === null ||
+      value === undefined
+    ) {
+      return "";
+    }
+
+    return String(value)
+      .trim()
+      .toLowerCase()
+      .replace(/^question\s*/i, "")
+      .replace(/^q\s*/i, "")
+      .replace(/\s+/g, "")
+      .replace(/[()]/g, "")
+      .replace(/[.)]+$/g, "")
+      .replace(/[-_]/g, "");
+  };
+
+  /*
+   * IMPORTANT:
+   *
+   * Do not use question.id here.
+   *
+   * Gemini can generate different IDs for
+   * question objects and answer objects.
+   *
+   * We always create one canonical ID from:
+   *
+   * number + sub
+   */
+  const getQuestionId = (
+    question
+  ) => {
+    if (!question) {
+      return "";
+    }
+
+    const number =
+      normalizeQuestionNumber(
+        question.number
+      );
+
+    const sub =
+      normalizeQuestionNumber(
+        question.sub
+      );
+
+    return `${number}${sub}`;
+  };
+
+  const getQuestionNumber = (
+    question
+  ) => {
+    return String(
+      question?.number ?? ""
+    );
+  };
+
+  /*
+   * ==========================================
+   * ANSWER ID
+   * ==========================================
+   */
+
+  const getAnswerId = (
+    answer
+  ) => {
+    if (!answer) {
+      return "";
+    }
+
+    /*
+     * Gemini may return the question
+     * identifier under different field names.
+     */
+    const rawAnswerNumber =
+      answer.questionNumber ??
+      answer.question_number ??
+      answer.number ??
+      answer.question ??
+      answer.questionNo ??
+      answer.question_no;
+
+    const rawAnswerSub =
+      answer.sub ??
+      answer.subPart ??
+      answer.sub_part ??
+      answer.part;
+
+    if (
+      rawAnswerNumber === null ||
+      rawAnswerNumber === undefined
+    ) {
+      return "";
+    }
+
+    const answerNumber =
+      normalizeQuestionNumber(
+        rawAnswerNumber
+      );
+
+    const answerSub =
+      normalizeQuestionNumber(
+        rawAnswerSub
+      );
+
+    if (!answerNumber) {
+      return "";
+    }
+
+    /*
+     * Example:
+     *
+     * number = 11
+     * sub    = a
+     *
+     * result = 11a
+     */
+    return `${answerNumber}${answerSub}`;
+  };
+
+  /*
+   * ==========================================
+   * ANSWER MATCHING
+   * ==========================================
+   */
+
+  const getAnswerForQuestion = (
+    question
+  ) => {
+    if (!question) {
+      return undefined;
+    }
+
+    const questionNumber =
+      normalizeQuestionNumber(
+        question.number
+      );
+
+    const questionSub =
+      normalizeQuestionNumber(
+        question.sub
+      );
+
+    if (!questionNumber) {
+      return undefined;
+    }
+
+    const expectedId =
+      `${questionNumber}${questionSub}`;
+
+    return answers.find(
+      (answer) => {
+        const answerId =
+          getAnswerId(answer);
+
+        if (!answerId) {
+          return false;
+        }
+
+        /*
+         * Normal question:
+         *
+         * Question: Q1
+         * Answer:   1
+         *
+         * Both -> 1
+         */
+        if (!questionSub) {
+          return (
+            answerId ===
+            questionNumber
+          );
+        }
+
+        /*
+         * Sub-question:
+         *
+         * Question: 11(a)
+         * Answer:   11(a)
+         *
+         * Both -> 11a
+         */
+        return (
+          answerId ===
+          expectedId
+        );
+      }
+    );
+  };
+
+  /*
+   * ==========================================
+   * CHECK UNANSWERED
+   * ==========================================
+   */
+
+  const isQuestionUnanswered = (
+    question
+  ) => {
+    const questionNumber =
+      normalizeQuestionNumber(
+        question?.number
+      );
+
+    const questionSub =
+      normalizeQuestionNumber(
+        question?.sub
+      );
+
+    if (!questionNumber) {
+      return false;
+    }
+
+    const expectedId =
+      `${questionNumber}${questionSub}`;
+
+    return unansweredQuestions.some(
+      (item) => {
+        if (!item) {
+          return false;
+        }
+
+        const itemNumber =
+          item.questionNumber ??
+          item.question_number ??
+          item.number ??
+          item.question ??
+          item.questionNo ??
+          item.question_no;
+
+        const itemSub =
+          item.sub ??
+          item.subPart ??
+          item.sub_part ??
+          item.part;
+
+        if (
+          itemNumber === null ||
+          itemNumber === undefined
+        ) {
+          return false;
+        }
+
+        const normalizedNumber =
+          normalizeQuestionNumber(
+            itemNumber
+          );
+
+        const normalizedSub =
+          normalizeQuestionNumber(
+            itemSub
+          );
+
+        const itemId =
+          `${normalizedNumber}${normalizedSub}`;
+
+        return (
+          itemId === expectedId
+        );
+      }
+    );
+  };
+
+  /*
+   * ==========================================
+   * INITIAL STATE
+   * ==========================================
+   */
+
+  const firstQuestionId =
+    questions.length > 0
+      ? getQuestionId(
+          questions[0]
+        )
+      : null;
+
   const [selected, setSelected] =
     useState(
-      questions[0]?.number
-        ? String(questions[0].number)
-        : null
+      firstQuestionId
     );
 
   const [expandedQuestions, setExpandedQuestions] =
     useState(
-      questions[0]?.number
-        ? [String(questions[0].number)]
+      firstQuestionId
+        ? [firstQuestionId]
         : []
     );
 
@@ -122,7 +420,9 @@ export default function QuestionAnswerScreen({
     }
 
     const url =
-      URL.createObjectURL(answerSheet);
+      URL.createObjectURL(
+        answerSheet
+      );
 
     setAnswerSheetUrl(url);
 
@@ -224,191 +524,6 @@ export default function QuestionAnswerScreen({
 
   /*
    * ==========================================
-   * QUESTION HELPERS
-   * ==========================================
-   */
-
-  const getQuestionId = (
-    question
-  ) => {
-    return String(
-      question.id ||
-        `${question.number}${
-          question.sub || ""
-        }`
-    );
-  };
-
-  const getQuestionNumber = (
-    question
-  ) => {
-    return String(
-      question.number
-    );
-  };
-
-  /*
-   * ==========================================
-   * NORMALIZE QUESTION NUMBER
-   * ==========================================
-   */
-
-  const normalizeQuestionNumber = (
-    value
-  ) => {
-    if (
-      value === null ||
-      value === undefined
-    ) {
-      return "";
-    }
-
-    return String(value)
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, "")
-      .replace(/^question/i, "")
-      .replace(/^q/i, "")
-      .replace(/[.)]+$/g, "")
-      .replace(/[()]/g, "");
-  };
-
-  /*
-   * ==========================================
-   * CHECK UNANSWERED
-   * ==========================================
-   */
-
-  const isQuestionUnanswered = (
-    question
-  ) => {
-    const number =
-      normalizeQuestionNumber(
-        question.number
-      );
-
-    const sub =
-      normalizeQuestionNumber(
-        question.sub
-      );
-
-    return unansweredQuestions.some(
-      (item) => {
-        const itemNumber =
-          normalizeQuestionNumber(
-            item.questionNumber ??
-              item.question_number ??
-              item.number ??
-              item.question
-          );
-
-        if (sub) {
-          return (
-            itemNumber ===
-              `${number}${sub}` ||
-            itemNumber ===
-              `${number}${sub}`.replace(
-                /[()]/g,
-                ""
-              )
-          );
-        }
-
-        return (
-          itemNumber === number
-        );
-      }
-    );
-  };
-
-  /*
-   * ==========================================
-   * ANSWER MATCHING
-   * ==========================================
-   */
-
-  const getAnswerForQuestion = (
-    question
-  ) => {
-    const questionNumber =
-      normalizeQuestionNumber(
-        question.number
-      );
-
-    const questionSub =
-      normalizeQuestionNumber(
-        question.sub
-      );
-
-    if (!questionNumber) {
-      return undefined;
-    }
-
-    return answers.find(
-      (answer) => {
-        /*
-         * Gemini may return the question
-         * identifier under slightly different
-         * field names.
-         */
-
-        const rawAnswerNumber =
-          answer.questionNumber ??
-          answer.question_number ??
-          answer.number ??
-          answer.question;
-
-        const answerNumber =
-          normalizeQuestionNumber(
-            rawAnswerNumber
-          );
-
-        if (!answerNumber) {
-          return false;
-        }
-
-        /*
-         * ======================================
-         * NORMAL QUESTIONS
-         *
-         * 1  -> 1
-         * Q1 -> 1
-         * 1. -> 1
-         * ======================================
-         */
-
-        if (!questionSub) {
-          return (
-            answerNumber ===
-            questionNumber
-          );
-        }
-
-        /*
-         * ======================================
-         * SUB QUESTIONS
-         *
-         * 11(a)
-         * 11a
-         * 11.a
-         * Q11(a)
-         *
-         * all normalize to 11a
-         * ======================================
-         */
-
-        const combined =
-          `${questionNumber}${questionSub}`;
-
-        return (
-          answerNumber === combined
-        );
-      }
-    );
-  };
-
-  /*
-   * ==========================================
    * SELECTED QUESTION
    * ==========================================
    */
@@ -420,6 +535,12 @@ export default function QuestionAnswerScreen({
           question
         ) === selected
     );
+
+  /*
+   * ==========================================
+   * SELECTED ANSWER
+   * ==========================================
+   */
 
   const selectedAnswer =
     selectedQuestion
@@ -502,7 +623,9 @@ export default function QuestionAnswerScreen({
         );
       };
 
-      collectPages(answers);
+      collectPages(
+        answers
+      );
 
       collectPages(
         unmatchedAnswers
@@ -614,7 +737,6 @@ export default function QuestionAnswerScreen({
             context,
           viewport,
         }).promise;
-
       } catch (error) {
         if (!cancelled) {
           console.error(
@@ -785,7 +907,6 @@ export default function QuestionAnswerScreen({
               context,
             viewport,
           }).promise;
-
         } catch (error) {
           console.error(
             "Failed to resize PDF:",
@@ -945,7 +1066,9 @@ export default function QuestionAnswerScreen({
   };
 
   const collapseAll = () => {
-    setExpandedQuestions([]);
+    setExpandedQuestions(
+      []
+    );
   };
 
   const allExpanded =
@@ -987,7 +1110,9 @@ export default function QuestionAnswerScreen({
         score !== null &&
         score !== undefined
       ) {
-        return String(score);
+        return String(
+          score
+        );
       }
     }
 
@@ -1196,9 +1321,7 @@ export default function QuestionAnswerScreen({
   if (!questions.length) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#f5f5f5]">
-
         <div className="text-center">
-
           <h1 className="text-xl font-semibold">
             No questions extracted
           </h1>
@@ -1206,9 +1329,7 @@ export default function QuestionAnswerScreen({
           <p className="mt-2 text-sm text-gray-500">
             Gemini did not return any questions.
           </p>
-
         </div>
-
       </main>
     );
   }
@@ -1288,11 +1409,9 @@ export default function QuestionAnswerScreen({
         <aside className="fixed left-[10px] top-[80px] hidden h-[calc(100vh-91px)] w-[64px] shrink-0 flex-col items-center rounded-[16px] bg-white py-4 shadow-sm lg:flex">
 
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#303030]">
-
             <span className="text-lg font-black text-white">
               V
             </span>
-
           </div>
 
           <button className="mt-7 flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#ff8d36] bg-[#292929] text-white">
@@ -1679,7 +1798,8 @@ export default function QuestionAnswerScreen({
                 <div
                   className="mx-auto w-fit"
                   style={{
-                    transform: `scale(${zoom / 100})`,
+                    transform:
+                      `scale(${zoom / 100})`,
                     transformOrigin:
                       "top center",
                   }}
