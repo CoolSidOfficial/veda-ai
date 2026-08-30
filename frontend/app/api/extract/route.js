@@ -1,344 +1,518 @@
 import { GoogleGenAI } from "@google/genai";
 
+import {
+  GEMINI_MODELS,
+  MAX_FILE_SIZE,
+  ALLOWED_TYPES,
+} from "../../config/ai";
+
+import {
+  ASSESSMENT_EXTRACTION_PROMPT,
+} from "../../prompts/assessmentExtraction";
+
 export const runtime = "nodejs";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+function isRetryableGeminiError(error) {
+  const message = String(
+    error?.message || ""
+  ).toLowerCase();
 
-const ALLOWED_TYPES = [
-  "application/pdf",
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-];
+  const status = String(
+    error?.status ||
+      error?.code ||
+      ""
+  );
+
+  if (status === "429") {
+    return true;
+  }
+
+  if (
+    message.includes("429") ||
+    message.includes("quota exceeded") ||
+    message.includes("rate limit") ||
+    message.includes("resource exhausted")
+  ) {
+    return true;
+  }
+
+  if (status === "404") {
+    return true;
+  }
+
+  if (
+    message.includes("404") ||
+    message.includes("not found") ||
+    message.includes("no longer available") ||
+    message.includes("model is not available")
+  ) {
+    return true;
+  }
+
+  if (status === "503") {
+    return true;
+  }
+
+  if (
+    message.includes("503") ||
+    message.includes("service unavailable") ||
+    message.includes("temporarily unavailable")
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function cleanGeminiJson(output) {
+  if (!output) {
+    return "";
+  }
+
+  let cleaned = String(output).trim();
+
+  cleaned = cleaned.replace(
+    /^```json\s*/i,
+    ""
+  );
+
+  cleaned = cleaned.replace(
+    /^```\s*/i,
+    ""
+  );
+
+  cleaned = cleaned.replace(
+    /\s*```$/i,
+    ""
+  );
+
+  return cleaned.trim();
+}
 
 export async function POST(request) {
   try {
-    // ==========================================
-    // GET UPLOADED FILES
-    // ==========================================
+    const formData =
+      await request.formData();
 
-    const formData = await request.formData();
+    const questionPaper =
+      formData.get("questionPaper");
 
-    const questionPaper = formData.get("questionPaper");
-    const answerSheet = formData.get("answerSheet");
+    const answerSheet =
+      formData.get("answerSheet");
 
-    if (!questionPaper || !answerSheet) {
+    if (
+      !questionPaper ||
+      !answerSheet
+    ) {
       return Response.json(
         {
           success: false,
           error:
             "Both question paper and answer sheet are required.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
-    // ==========================================
-    // CHECK FILE OBJECTS
-    // ==========================================
-
-    if (!(questionPaper instanceof File)) {
+    if (
+      !(questionPaper instanceof File)
+    ) {
       return Response.json(
         {
           success: false,
-          error: "Invalid question paper file.",
+          error:
+            "Invalid question paper file.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
-    if (!(answerSheet instanceof File)) {
+    if (
+      !(answerSheet instanceof File)
+    ) {
       return Response.json(
         {
           success: false,
-          error: "Invalid answer sheet file.",
+          error:
+            "Invalid answer sheet file.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
-    // ==========================================
-    // CHECK FILE TYPES
-    // ==========================================
-
-    if (!ALLOWED_TYPES.includes(questionPaper.type)) {
+    if (
+      !ALLOWED_TYPES.includes(
+        questionPaper.type
+      )
+    ) {
       return Response.json(
         {
           success: false,
           error:
             "Question paper must be PDF, PNG, JPG, JPEG, or WEBP.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
-    if (!ALLOWED_TYPES.includes(answerSheet.type)) {
+    if (
+      !ALLOWED_TYPES.includes(
+        answerSheet.type
+      )
+    ) {
       return Response.json(
         {
           success: false,
           error:
             "Answer sheet must be PDF, PNG, JPG, JPEG, or WEBP.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
-    // ==========================================
-    // CHECK FILE SIZE
-    // ==========================================
-
-    if (questionPaper.size > MAX_FILE_SIZE) {
+    if (
+      questionPaper.size >
+      MAX_FILE_SIZE
+    ) {
       return Response.json(
         {
           success: false,
           error:
             "Question paper must be smaller than 10MB.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
-    if (answerSheet.size > MAX_FILE_SIZE) {
+    if (
+      answerSheet.size >
+      MAX_FILE_SIZE
+    ) {
       return Response.json(
         {
           success: false,
           error:
             "Answer sheet must be smaller than 10MB.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
-    console.log("Question Paper:", {
-      name: questionPaper.name,
-      type: questionPaper.type,
-      size: questionPaper.size,
-    });
-
-    console.log("Answer Sheet:", {
-      name: answerSheet.name,
-      type: answerSheet.type,
-      size: answerSheet.size,
-    });
-
-    // ==========================================
-    // CONVERT FILES TO BASE64
-    // ==========================================
-
-    const questionPaperBuffer = Buffer.from(
-      await questionPaper.arrayBuffer()
+    console.log(
+      "Question Paper:",
+      {
+        name: questionPaper.name,
+        type: questionPaper.type,
+        size: questionPaper.size,
+      }
     );
 
-    const answerSheetBuffer = Buffer.from(
-      await answerSheet.arrayBuffer()
+    console.log(
+      "Answer Sheet:",
+      {
+        name: answerSheet.name,
+        type: answerSheet.type,
+        size: answerSheet.size,
+      }
     );
+
+    const questionPaperBuffer =
+      Buffer.from(
+        await questionPaper.arrayBuffer()
+      );
+
+    const answerSheetBuffer =
+      Buffer.from(
+        await answerSheet.arrayBuffer()
+      );
 
     const questionPaperBase64 =
-      questionPaperBuffer.toString("base64");
+      questionPaperBuffer.toString(
+        "base64"
+      );
 
     const answerSheetBase64 =
-      answerSheetBuffer.toString("base64");
-
-    // ==========================================
-    // CREATE GEMINI CONTENT
-    // ==========================================
+      answerSheetBuffer.toString(
+        "base64"
+      );
 
     const questionPaperContent =
-      questionPaper.type === "application/pdf"
+      questionPaper.type ===
+      "application/pdf"
         ? {
             type: "document",
             data: questionPaperBase64,
-            mime_type: "application/pdf",
+            mime_type:
+              "application/pdf",
           }
         : {
             type: "image",
             data: questionPaperBase64,
-            mime_type: questionPaper.type,
+            mime_type:
+              questionPaper.type,
           };
 
     const answerSheetContent =
-      answerSheet.type === "application/pdf"
+      answerSheet.type ===
+      "application/pdf"
         ? {
             type: "document",
             data: answerSheetBase64,
-            mime_type: "application/pdf",
+            mime_type:
+              "application/pdf",
           }
         : {
             type: "image",
             data: answerSheetBase64,
-            mime_type: answerSheet.type,
+            mime_type:
+              answerSheet.type,
           };
 
-    // ==========================================
-    // PROMPT
-    // ==========================================
+    let interaction = null;
+    let successfulModel = null;
+    let lastError = null;
 
-    const prompt = `
-You are an AI assessment extraction and answer mapping system.
+    for (
+      let i = 0;
+      i < GEMINI_MODELS.length;
+      i++
+    ) {
+      const model =
+        GEMINI_MODELS[i];
 
-You have TWO documents:
+      try {
+        console.log(
+          `Trying Gemini model ${i + 1}/${GEMINI_MODELS.length}: ${model}`
+        );
 
-1. QUESTION PAPER
-2. STUDENT ANSWER SHEET
+        interaction =
+          await ai.interactions.create({
+            model,
 
-Analyze both documents together.
+            input: [
+              {
+                type: "text",
+                text:
+                  ASSESSMENT_EXTRACTION_PROMPT,
+              },
+              questionPaperContent,
+              answerSheetContent,
+            ],
+          });
 
-QUESTION PAPER REQUIREMENTS:
+        successfulModel =
+          model;
 
-- Extract every question.
-- Preserve the original printed numbering.
-- Preserve the original printed order.
-- Treat labelled sub-parts as separate questions.
-- For example, 11(a) and 11(b) are separate questions.
-- Do not invent questions.
+        console.log(
+          `Gemini succeeded with model: ${model}`
+        );
 
-ANSWER SHEET REQUIREMENTS:
+        break;
+      } catch (error) {
+        lastError = error;
 
-- Analyze the complete answer sheet.
-- Identify every student answer.
-- Answers may be written out of order.
-- Determine which question each answer belongs to.
-- Answers may continue across multiple pages.
-- Identify unanswered questions.
-- Identify answers that cannot confidently be matched.
-- Do not invent answers.
-- Do not invent question numbers.
+        console.error(
+          `Gemini model failed: ${model}`
+        );
 
-For every answer, identify its location on the answer sheet.
+        console.error(
+          error?.message || error
+        );
 
-Return ONLY valid JSON.
+        if (
+          isRetryableGeminiError(
+            error
+          )
+        ) {
+          console.log(
+            `Falling back from ${model}...`
+          );
 
-Use this structure:
-
-{
-  "questions": [
-    {
-      "number": "1",
-      "text": "Question text",
-      "order": 1
-    }
-  ],
-  "answers": [
-    {
-      "questionNumber": "1",
-      "text": "Student answer",
-      "status": "answered",
-      "confidence": 0.95,
-      "regions": [
-        {
-          "page": 1,
-          "bbox": {
-            "x": 100,
-            "y": 200,
-            "width": 500,
-            "height": 150
-          }
+          continue;
         }
-      ]
+
+        throw error;
+      }
     }
-  ],
-  "unansweredQuestions": [
-    {
-      "questionNumber": "4"
-    }
-  ],
-  "unmatchedAnswers": [
-    {
-      "text": "Unmatched answer",
-      "confidence": 0.30,
-      "regions": [
+
+    if (!interaction) {
+      return Response.json(
         {
-          "page": 2,
-          "bbox": {
-            "x": 100,
-            "y": 300,
-            "width": 500,
-            "height": 200
-          }
-        }
-      ]
-    }
-  ]
-}
-
-For an answer spanning multiple pages, return multiple regions.
-
-If an answer cannot be confidently mapped, put it in unmatchedAnswers.
-
-Return JSON only.
-`;
-
-    // ==========================================
-    // SEND BOTH FILES TO GEMINI
-    // ==========================================
-
-    const interaction = await ai.interactions.create({
-      model: "gemini-3.6-flash",
-
-      input: [
-        {
-          type: "text",
-          text: prompt,
+          success: false,
+          error:
+            "All available AI models are currently unavailable. Please try again shortly.",
+          details:
+            lastError?.message ||
+            "No Gemini model succeeded.",
         },
+        {
+          status: 503,
+        }
+      );
+    }
 
-        questionPaperContent,
+    const output =
+      interaction.output_text;
 
-        answerSheetContent,
-      ],
-    });
+    if (!output) {
+      return Response.json(
+        {
+          success: false,
+          error:
+            "Gemini returned an empty response.",
+          model:
+            successfulModel,
+        },
+        {
+          status: 500,
+        }
+      );
+    }
 
-    // ==========================================
-    // GET GEMINI RESPONSE
-    // ==========================================
-
-    const output = interaction.output_text;
-
-    console.log("Gemini response received.");
-
-    // ==========================================
-    // CLEAN JSON
-    // ==========================================
-
-    const cleanedOutput = output
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/\s*```$/i, "")
-      .trim();
+    const cleanedOutput =
+      cleanGeminiJson(
+        output
+      );
 
     let result;
 
     try {
-      result = JSON.parse(cleanedOutput);
+      result =
+        JSON.parse(
+          cleanedOutput
+        );
     } catch (parseError) {
       console.error(
-        "Gemini returned invalid JSON:",
+        "Gemini returned invalid JSON."
+      );
+
+      console.error(
         output
       );
 
       return Response.json(
         {
           success: false,
-          error: "Gemini returned invalid JSON.",
+          error:
+            "Gemini returned invalid JSON.",
+          model:
+            successfulModel,
           raw: output,
         },
-        { status: 500 }
+        {
+          status: 500,
+        }
       );
     }
 
-    // ==========================================
-    // SUCCESS
-    // ==========================================
+    if (
+      !Array.isArray(
+        result.questions
+      )
+    ) {
+      result.questions = [];
+    }
+
+    if (
+      !Array.isArray(
+        result.answers
+      )
+    ) {
+      result.answers = [];
+    }
+
+    if (
+      !Array.isArray(
+        result.unansweredQuestions
+      )
+    ) {
+      result.unansweredQuestions =
+        [];
+    }
+
+    if (
+      !Array.isArray(
+        result.unmatchedAnswers
+      )
+    ) {
+      result.unmatchedAnswers =
+        [];
+    }
+
+    result.answers =
+      result.answers.map(
+        (answer) => ({
+          ...answer,
+          regions:
+            Array.isArray(
+              answer.regions
+            )
+              ? answer.regions
+              : [],
+        })
+      );
+
+    result.unmatchedAnswers =
+      result.unmatchedAnswers.map(
+        (answer) => ({
+          ...answer,
+          regions:
+            Array.isArray(
+              answer.regions
+            )
+              ? answer.regions
+              : [],
+        })
+      );
+
+    console.log(
+      "Questions:",
+      result.questions.length
+    );
+
+    console.log(
+      "Answers:",
+      result.answers.length
+    );
+
+    console.log(
+      "Unanswered:",
+      result.unansweredQuestions.length
+    );
+
+    console.log(
+      "Unmatched:",
+      result.unmatchedAnswers.length
+    );
 
     return Response.json({
       success: true,
+      model: successfulModel,
       data: result,
     });
   } catch (error) {
-    console.error("Gemini extraction error:", error);
+    console.error(
+      "Assessment extraction error:",
+      error
+    );
 
     return Response.json(
       {
@@ -347,7 +521,9 @@ Return JSON only.
           error?.message ||
           "Failed to process assessment.",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }

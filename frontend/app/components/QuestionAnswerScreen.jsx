@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   ArrowLeft,
@@ -22,10 +27,6 @@ export default function QuestionAnswerScreen({
   results,
   files,
 }) {
-  // =========================================================
-  // REAL GEMINI DATA
-  // =========================================================
-
   const extractedData = results?.data || results || {};
 
   const questions = extractedData.questions || [];
@@ -34,10 +35,6 @@ export default function QuestionAnswerScreen({
     extractedData.unansweredQuestions || [];
   const unmatchedAnswers =
     extractedData.unmatchedAnswers || [];
-
-  // =========================================================
-  // STATE
-  // =========================================================
 
   const [selected, setSelected] = useState(
     questions[0]?.number || null
@@ -54,9 +51,7 @@ export default function QuestionAnswerScreen({
 
   const [zoom, setZoom] = useState(100);
 
-  // =========================================================
-  // ANSWER SHEET FILE
-  // =========================================================
+  const answerImageRef = useRef(null);
 
   const answerSheet = files?.answerSheet;
 
@@ -64,7 +59,10 @@ export default function QuestionAnswerScreen({
     useState(null);
 
   useEffect(() => {
-    if (!answerSheet) return;
+    if (!answerSheet) {
+      setAnswerSheetUrl(null);
+      return;
+    }
 
     const url = URL.createObjectURL(answerSheet);
 
@@ -74,10 +72,6 @@ export default function QuestionAnswerScreen({
       URL.revokeObjectURL(url);
     };
   }, [answerSheet]);
-
-  // =========================================================
-  // HELPERS
-  // =========================================================
 
   const getQuestionId = (question) => {
     return String(
@@ -108,10 +102,6 @@ export default function QuestionAnswerScreen({
     );
   };
 
-  // =========================================================
-  // CURRENT ANSWER
-  // =========================================================
-
   const selectedQuestion = questions.find(
     (question) =>
       getQuestionId(question) === selected
@@ -120,10 +110,6 @@ export default function QuestionAnswerScreen({
   const selectedAnswer = selectedQuestion
     ? getAnswerForQuestion(selectedQuestion)
     : null;
-
-  // =========================================================
-  // REGIONS FOR CURRENT PAGE
-  // =========================================================
 
   const selectedRegions = useMemo(() => {
     if (!selectedAnswer?.regions) {
@@ -135,10 +121,6 @@ export default function QuestionAnswerScreen({
         Number(region.page) === currentPage
     );
   }, [selectedAnswer, currentPage]);
-
-  // =========================================================
-  // TOTAL PAGES
-  // =========================================================
 
   const totalPages = useMemo(() => {
     let highestPage = 1;
@@ -166,23 +148,63 @@ export default function QuestionAnswerScreen({
     return highestPage;
   }, [answers, unmatchedAnswers]);
 
-  // =========================================================
-  // SELECT QUESTION
-  // =========================================================
+  /*
+   * Gemini now returns normalized coordinates:
+   *
+   * x      = 0 - 1000
+   * y      = 0 - 1000
+   * width  = 0 - 1000
+   * height = 0 - 1000
+   *
+   * The overlay is positioned relative to the displayed
+   * image, so we convert the normalized values directly
+   * into percentages.
+   */
+
+  const getRegionStyle = (bbox) => {
+    if (!bbox) {
+      return null;
+    }
+
+    const x = Number(bbox.x);
+    const y = Number(bbox.y);
+    const width = Number(bbox.width);
+    const height = Number(bbox.height);
+
+    if (
+      !Number.isFinite(x) ||
+      !Number.isFinite(y) ||
+      !Number.isFinite(width) ||
+      !Number.isFinite(height)
+    ) {
+      return null;
+    }
+
+    return {
+      left: `${(x / 1000) * 100}%`,
+      top: `${(y / 1000) * 100}%`,
+      width: `${(width / 1000) * 100}%`,
+      height: `${(height / 1000) * 100}%`,
+    };
+  };
 
   const toggleQuestion = (question) => {
     const id = getQuestionId(question);
 
     setSelected(id);
 
-    const answer = getAnswerForQuestion(question);
+    const answer =
+      getAnswerForQuestion(question);
 
     if (answer?.regions?.length) {
       const firstPage = Number(
         answer.regions[0].page
       );
 
-      if (firstPage) {
+      if (
+        firstPage &&
+        firstPage <= totalPages
+      ) {
         setCurrentPage(firstPage);
       }
     }
@@ -199,10 +221,6 @@ export default function QuestionAnswerScreen({
     });
   };
 
-  // =========================================================
-  // EXPAND ALL
-  // =========================================================
-
   const expandAll = () => {
     setExpandedQuestions(
       questions.map((question) =>
@@ -211,24 +229,18 @@ export default function QuestionAnswerScreen({
     );
   };
 
-  // =========================================================
-  // COLLAPSE ALL
-  // =========================================================
-
   const collapseAll = () => {
     setExpandedQuestions([]);
   };
 
   const allExpanded =
     questions.length > 0 &&
-    expandedQuestions.length === questions.length;
-
-  // =========================================================
-  // SCORE
-  // =========================================================
+    expandedQuestions.length ===
+      questions.length;
 
   const getScore = (question) => {
-    const answer = getAnswerForQuestion(question);
+    const answer =
+      getAnswerForQuestion(question);
 
     if (isQuestionUnanswered(question)) {
       return "0 / ?";
@@ -241,19 +253,12 @@ export default function QuestionAnswerScreen({
     return answer.score || "—";
   };
 
-  // =========================================================
-  // ANSWER SHEET TYPE
-  // =========================================================
-
   const isPdf =
-    answerSheet?.type === "application/pdf";
+    answerSheet?.type ===
+    "application/pdf";
 
   const isImage =
     answerSheet?.type?.startsWith("image/");
-
-  // =========================================================
-  // ZOOM
-  // =========================================================
 
   const zoomIn = () => {
     setZoom((previous) =>
@@ -267,10 +272,6 @@ export default function QuestionAnswerScreen({
     );
   };
 
-  // =========================================================
-  // PAGE NAVIGATION
-  // =========================================================
-
   const previousPage = () => {
     setCurrentPage((previous) =>
       Math.max(previous - 1, 1)
@@ -279,13 +280,12 @@ export default function QuestionAnswerScreen({
 
   const nextPage = () => {
     setCurrentPage((previous) =>
-      Math.min(previous + 1, totalPages)
+      Math.min(
+        previous + 1,
+        totalPages
+      )
     );
   };
-
-  // =========================================================
-  // EMPTY RESULT
-  // =========================================================
 
   if (!questions.length) {
     return (
@@ -303,26 +303,17 @@ export default function QuestionAnswerScreen({
     );
   }
 
-  // =========================================================
-  // UI
-  // =========================================================
-
   return (
     <main className="h-screen overflow-hidden bg-[#e8e8e8] font-bricolage text-[#303030]">
 
-      {/* =====================================================
-          TOP HEADER
-      ===================================================== */}
-
       <header className="flex h-[64px] items-center justify-between border-b border-[#e5e5e5] bg-white px-5">
 
-        {/* LEFT */}
-
         <div className="flex items-center gap-4">
-
           <button
             className="
-              flex h-9 w-9 items-center justify-center
+              flex h-9 w-9
+              items-center
+              justify-center
               rounded-full
               transition
               hover:bg-[#f5f5f5]
@@ -338,10 +329,7 @@ export default function QuestionAnswerScreen({
               Exams
             </span>
           </div>
-
         </div>
-
-        {/* RIGHT */}
 
         <div className="flex items-center gap-5">
 
@@ -352,7 +340,6 @@ export default function QuestionAnswerScreen({
           </button>
 
           <button className="relative">
-
             <Bell size={17} />
 
             <span
@@ -366,7 +353,6 @@ export default function QuestionAnswerScreen({
                 bg-[#ff6242]
               "
             />
-
           </button>
 
           <div className="flex items-center gap-2">
@@ -374,7 +360,8 @@ export default function QuestionAnswerScreen({
             <div
               className="
                 flex h-8 w-8
-                items-center justify-center
+                items-center
+                justify-center
                 rounded-full
                 bg-[#f2ddd5]
                 text-sm
@@ -393,20 +380,10 @@ export default function QuestionAnswerScreen({
             />
 
           </div>
-
         </div>
-
       </header>
 
-      {/* =====================================================
-          WORKSPACE
-      ===================================================== */}
-
       <div className="flex h-[calc(100vh-64px)] overflow-hidden">
-
-        {/* ===================================================
-            LEFT SIDEBAR
-        =================================================== */}
 
         <aside
           className="
@@ -426,7 +403,8 @@ export default function QuestionAnswerScreen({
           <div
             className="
               flex h-9 w-9
-              items-center justify-center
+              items-center
+              justify-center
               rounded-lg
               bg-[#303030]
             "
@@ -440,7 +418,8 @@ export default function QuestionAnswerScreen({
             className="
               mt-7
               flex h-9 w-9
-              items-center justify-center
+              items-center
+              justify-center
               rounded-full
               border-2
               border-[#ff8d36]
@@ -473,7 +452,8 @@ export default function QuestionAnswerScreen({
             <div
               className="
                 flex h-9 w-9
-                items-center justify-center
+                items-center
+                justify-center
                 rounded-full
                 bg-[#f0f0f0]
               "
@@ -486,12 +466,7 @@ export default function QuestionAnswerScreen({
           <span className="mt-4 text-sm text-[#777]">
             »
           </span>
-
         </aside>
-
-        {/* ===================================================
-            QUESTION PANEL
-        =================================================== */}
 
         <section
           className="
@@ -504,8 +479,6 @@ export default function QuestionAnswerScreen({
           "
         >
 
-          {/* HEADER */}
-
           <div
             className="
               flex
@@ -517,14 +490,12 @@ export default function QuestionAnswerScreen({
           >
 
             <h2 className="text-[14px] font-semibold">
-
               Extracted Questions
 
               <span className="font-normal text-[#777]">
                 {" "}
                 (from question paper)
               </span>
-
             </h2>
 
             <button
@@ -549,10 +520,7 @@ export default function QuestionAnswerScreen({
                 ? "Collapse All"
                 : "Expand All"}
             </button>
-
           </div>
-
-          {/* QUESTIONS */}
 
           <div
             className="
@@ -580,7 +548,9 @@ export default function QuestionAnswerScreen({
                   getAnswerForQuestion(question);
 
                 const unanswered =
-                  isQuestionUnanswered(question);
+                  isQuestionUnanswered(
+                    question
+                  );
 
                 return (
                   <div
@@ -598,11 +568,11 @@ export default function QuestionAnswerScreen({
                     `}
                   >
 
-                    {/* QUESTION */}
-
                     <button
                       onClick={() =>
-                        toggleQuestion(question)
+                        toggleQuestion(
+                          question
+                        )
                       }
                       className="
                         flex
@@ -613,8 +583,6 @@ export default function QuestionAnswerScreen({
                         text-left
                       "
                     >
-
-                      {/* NUMBER */}
 
                       <div
                         className={`
@@ -638,8 +606,6 @@ export default function QuestionAnswerScreen({
                         {question.number}
                       </div>
 
-                      {/* CONTENT */}
-
                       <div className="min-w-0 flex-1">
 
                         <div className="flex items-start gap-4">
@@ -654,7 +620,6 @@ export default function QuestionAnswerScreen({
                               text-[#303030]
                             "
                           >
-
                             {question.sub && (
                               <span className="mr-2 font-semibold">
                                 {question.sub}
@@ -662,10 +627,7 @@ export default function QuestionAnswerScreen({
                             )}
 
                             {question.text}
-
                           </p>
-
-                          {/* SCORE */}
 
                           <span
                             className={`
@@ -689,24 +651,23 @@ export default function QuestionAnswerScreen({
                           </span>
 
                         </div>
-
                       </div>
-
-                      {/* ARROW */}
 
                       <div className="pt-1 text-[#777]">
 
                         {isExpanded ? (
-                          <ChevronUp size={17} />
+                          <ChevronUp
+                            size={17}
+                          />
                         ) : (
-                          <ChevronDown size={17} />
+                          <ChevronDown
+                            size={17}
+                          />
                         )}
 
                       </div>
 
                     </button>
-
-                    {/* AI FEEDBACK */}
 
                     {isExpanded && answer && (
                       <div
@@ -719,9 +680,23 @@ export default function QuestionAnswerScreen({
                         "
                       >
 
-                        <p className="text-[12px] font-semibold">
-                          Student Answer
-                        </p>
+                        <div className="flex items-center justify-between">
+
+                          <p className="text-[12px] font-semibold">
+                            Student Answer
+                          </p>
+
+                          {answer.confidence != null && (
+                            <span className="text-[10px] text-[#888]">
+                              {Math.round(
+                                answer.confidence *
+                                  100
+                              )}
+                              % confidence
+                            </span>
+                          )}
+
+                        </div>
 
                         <p
                           className="
@@ -734,15 +709,6 @@ export default function QuestionAnswerScreen({
                         >
                           {answer.text}
                         </p>
-
-                        <div className="mt-2 text-[10px] text-[#888]">
-                          Confidence:{" "}
-                          {Math.round(
-                            (answer.confidence || 0) *
-                              100
-                          )}
-                          %
-                        </div>
 
                       </div>
                     )}
@@ -757,13 +723,16 @@ export default function QuestionAnswerScreen({
                           p-3
                         "
                       >
+
                         <p className="text-[12px] font-semibold">
                           Unanswered
                         </p>
 
                         <p className="mt-1 text-[12px] text-[#888]">
-                          No answer was found for this question.
+                          No answer was found for
+                          this question.
                         </p>
+
                       </div>
                     )}
 
@@ -772,14 +741,8 @@ export default function QuestionAnswerScreen({
               })}
 
             </div>
-
           </div>
-
         </section>
-
-        {/* ===================================================
-            ANSWER SHEET
-        =================================================== */}
 
         <section
           className="
@@ -791,8 +754,6 @@ export default function QuestionAnswerScreen({
             md:flex
           "
         >
-
-          {/* TOOLBAR */}
 
           <div
             className="
@@ -817,7 +778,8 @@ export default function QuestionAnswerScreen({
                 onClick={zoomOut}
                 className="
                   flex h-8 w-8
-                  items-center justify-center
+                  items-center
+                  justify-center
                   rounded-md
                   bg-[#414141]
                   transition
@@ -835,7 +797,8 @@ export default function QuestionAnswerScreen({
                 onClick={zoomIn}
                 className="
                   flex h-8 w-8
-                  items-center justify-center
+                  items-center
+                  justify-center
                   rounded-md
                   bg-[#414141]
                   transition
@@ -859,20 +822,24 @@ export default function QuestionAnswerScreen({
 
                 <button
                   onClick={previousPage}
-                  disabled={currentPage === 1}
+                  disabled={
+                    currentPage === 1
+                  }
                   className="disabled:opacity-40"
                 >
                   <ChevronLeft size={13} />
                 </button>
 
                 <span className="text-[10px]">
-                  Page {currentPage} of {totalPages}
+                  Page {currentPage} of{" "}
+                  {totalPages}
                 </span>
 
                 <button
                   onClick={nextPage}
                   disabled={
-                    currentPage === totalPages
+                    currentPage ===
+                    totalPages
                   }
                   className="disabled:opacity-40"
                 >
@@ -880,12 +847,8 @@ export default function QuestionAnswerScreen({
                 </button>
 
               </div>
-
             </div>
-
           </div>
-
-          {/* DOCUMENT */}
 
           <div
             className="
@@ -896,110 +859,135 @@ export default function QuestionAnswerScreen({
           >
 
             <div
-              className="
-                relative
-                mx-auto
-                w-fit
-                min-w-[500px]
-                bg-white
-                shadow-lg
-              "
+              className="mx-auto w-fit rounded-sm"
               style={{
-                transform: `scale(${zoom / 100})`,
-                transformOrigin: "top center",
-                marginBottom:
-                  `${(zoom - 100) * 5}px`,
+                zoom: `${zoom}%`,
               }}
             >
 
-              {/* =================================================
-                  IMAGE ANSWER SHEET
-              ================================================= */}
+              {isImage &&
+                answerSheetUrl && (
+                  <div
+                    className="
+                      relative
+                      w-[720px]
+                      bg-white
+                      shadow-lg
+                    "
+                  >
 
-              {isImage && answerSheetUrl && (
-                <div className="relative">
+                    <img
+                      ref={answerImageRef}
+                      src={answerSheetUrl}
+                      alt="Student answer sheet"
+                      className="
+                        block
+                        h-auto
+                        w-[720px]
+                        max-w-none
+                      "
+                    />
 
-                  <img
-                    src={answerSheetUrl}
-                    alt="Student answer sheet"
-                    className="block max-h-none w-auto max-w-none"
-                  />
+                    {selectedRegions.map(
+                      (region, index) => {
 
-                  {/* =============================================
-                      GEMINI HIGHLIGHT REGIONS
-                  ============================================= */}
+                        const regionStyle =
+                          getRegionStyle(
+                            region.bbox
+                          );
 
-                  {selectedRegions.map(
-                    (region, index) => {
+                        if (!regionStyle) {
+                          return null;
+                        }
 
-                      const bbox =
-                        region.bbox;
-
-                      if (!bbox) return null;
-
-                      return (
-                        <div
-                          key={index}
-                          className="
-                            pointer-events-none
-                            absolute
-                            rounded-[9px]
-                            border-2
-                            border-[#65bd55]
-                            bg-[#7ddc6e]/15
-                          "
-                          style={{
-                            left: `${bbox.x}px`,
-                            top: `${bbox.y}px`,
-                            width: `${bbox.width}px`,
-                            height: `${bbox.height}px`,
-                          }}
-                        >
-
-                          <span
+                        return (
+                          <div
+                            key={`${selected}-${currentPage}-${index}`}
                             className="
+                              pointer-events-none
                               absolute
-                              -left-[2px]
-                              -top-[24px]
-                              rounded-t-[5px]
-                              bg-[#65bd55]
-                              px-3
-                              py-1
-                              text-[10px]
-                              font-semibold
-                              text-white
+                              rounded-[8px]
+                              border-[3px]
+                              border-[#65bd55]
+                              bg-[#7ddc6e]/20
+                              shadow-[0_0_0_2px_rgba(255,255,255,0.7)]
                             "
+                            style={
+                              regionStyle
+                            }
                           >
-                            Q{selectedQuestion?.number}
-                          </span>
 
+                            <span
+                              className="
+                                absolute
+                                -left-[3px]
+                                -top-[27px]
+                                rounded-t-[6px]
+                                bg-[#65bd55]
+                                px-3
+                                py-1
+                                text-[10px]
+                                font-semibold
+                                text-white
+                                whitespace-nowrap
+                              "
+                            >
+                              Q
+                              {
+                                selectedQuestion?.number
+                              }
+                            </span>
+
+                          </div>
+                        );
+                      }
+                    )}
+
+                  </div>
+                )}
+
+              {isPdf &&
+                answerSheetUrl && (
+                  <div className="relative">
+
+                    <iframe
+                      src={answerSheetUrl}
+                      title="Student answer sheet"
+                      className="
+                        h-[900px]
+                        w-[720px]
+                        border-0
+                        bg-white
+                        shadow-lg
+                      "
+                    />
+
+                    {selectedAnswer &&
+                      selectedRegions.length >
+                        0 && (
+                        <div
+                          className="
+                            mt-3
+                            rounded-lg
+                            bg-white
+                            px-4
+                            py-3
+                            text-[11px]
+                            text-[#777]
+                            shadow-sm
+                          "
+                        >
+                          Answer detected on
+                          page{" "}
+                          {currentPage}.
+                          PDF highlighting will
+                          be enabled with the
+                          document renderer.
                         </div>
-                      );
-                    }
-                  )}
+                      )}
 
-                </div>
-              )}
-
-              {/* =================================================
-                  PDF
-              ================================================= */}
-
-              {isPdf && answerSheetUrl && (
-                <iframe
-                  src={answerSheetUrl}
-                  title="Student answer sheet"
-                  className="
-                    h-[900px]
-                    w-[720px]
-                    border-0
-                  "
-                />
-              )}
-
-              {/* =================================================
-                  NO FILE
-              ================================================= */}
+                  </div>
+                )}
 
               {!answerSheetUrl && (
                 <div
@@ -1009,23 +997,23 @@ export default function QuestionAnswerScreen({
                     w-[600px]
                     items-center
                     justify-center
+                    bg-white
                     text-center
                     text-sm
                     text-gray-500
+                    shadow-lg
                   "
                 >
-                  Answer sheet preview unavailable.
+                  Answer sheet preview
+                  unavailable.
                 </div>
               )}
 
             </div>
-
           </div>
-
         </section>
 
       </div>
-
     </main>
   );
 }
