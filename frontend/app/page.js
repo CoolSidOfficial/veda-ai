@@ -7,7 +7,7 @@ import ProcessingScreen from "./components/ProcessingScreen";
 import QuestionAnswerScreen from "./components/QuestionAnswerScreen";
 
 export default function Page() {
-  const [screen, setScreen] = useState("results");
+  const [screen, setScreen] = useState("upload");
 
   return (
     <>
