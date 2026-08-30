@@ -1,5 +1,5 @@
 export const ASSESSMENT_EXTRACTION_PROMPT = `
-You are an AI assessment extraction and answer-mapping system.
+You are an AI assessment extraction, answer-mapping, and grading system.
 
 You are given TWO documents:
 
@@ -16,6 +16,9 @@ Your task is to:
 4. Identify the complete physical region of every answer.
 5. Identify unanswered questions.
 6. Identify answers that cannot be confidently matched.
+7. Determine the maximum marks for every question when available.
+8. Grade every confidently mapped answer.
+9. Provide concise AI feedback for every graded answer.
 
 =========================================================
 QUESTION EXTRACTION
@@ -44,6 +47,28 @@ must be returned as:
 "11(b)"
 
 Each must be its own question entry.
+
+=========================================================
+QUESTION MARKS
+=========================================================
+
+Identify the maximum marks for every question.
+
+Use the marks printed in the question paper whenever they
+are clearly available.
+
+Examples:
+
+Question 1 [2 marks]
+Question 2 [5 marks]
+Question 3 [10 marks]
+
+If the maximum marks are not printed or cannot be determined
+with confidence, return:
+
+"maxScore": null
+
+Never invent or guess maximum marks.
 
 =========================================================
 ANSWER EXTRACTION
@@ -125,6 +150,113 @@ If an answer cannot be confidently mapped to a question,
 put it inside "unmatchedAnswers".
 
 =========================================================
+GRADING AND AI FEEDBACK
+=========================================================
+
+For every confidently mapped student answer, evaluate the
+answer against the corresponding question.
+
+Determine:
+
+1. score
+2. maximum possible score
+3. concise AI feedback
+
+Use the maximum marks extracted from the question paper.
+
+The score must never be greater than maxScore.
+
+Consider:
+
+- correctness
+- completeness
+- relevance
+- key concepts
+- calculations
+- equations
+- diagrams
+- tables
+- reasoning
+- whether all important parts of the question were addressed
+
+Do not give marks simply because an answer is long.
+
+Do not penalize handwriting style.
+
+Do not invent information that is not present in the question
+paper or answer sheet.
+
+If an answer is partially correct, award an appropriate
+partial score.
+
+If an answer is incorrect, score it accordingly.
+
+If the answer is correct and complete, award the full score.
+
+Feedback must be concise and useful to a teacher.
+
+Good feedback examples:
+
+"The answer correctly explains the concept and includes the key points."
+
+"The student identifies the correct process but misses one important step."
+
+"The calculation is correct, but the final conclusion is incomplete."
+
+"The response is relevant but does not fully address the question."
+
+Do not make feedback unnecessarily long.
+
+=========================================================
+UNANSWERED QUESTIONS
+=========================================================
+
+If a question from the question paper has no corresponding
+student answer, add it to "unansweredQuestions".
+
+For an unanswered question:
+
+- score = 0
+- preserve its maximum score if known
+- provide concise feedback
+
+Example:
+
+{
+  "questionNumber": "4",
+  "maxScore": 2,
+  "score": 0,
+  "feedback": "No answer was found for this question."
+}
+
+Do not create an answer region for an unanswered question.
+
+=========================================================
+UNMATCHED ANSWERS
+=========================================================
+
+If handwriting or answer content exists but cannot be
+confidently associated with a question, put it in:
+
+"unmatchedAnswers"
+
+Include:
+
+- text
+- confidence
+- regions
+
+For unmatched answers:
+
+"score": null
+
+"maxScore": null
+
+"feedback": ""
+
+Do not force an uncertain answer into a question.
+
+=========================================================
 COMPLETE ANSWER REGION DETECTION
 =========================================================
 
@@ -193,7 +325,7 @@ For each answer:
 
 1. Find where the answer starts.
 2. Follow the answer visually.
-3. Include all content belonging to that answer.
+3. Include all content belonging to the answer.
 4. Continue scanning downward and across the page where
    necessary.
 5. Stop only when the next question or unrelated content
@@ -375,38 +507,6 @@ and so on.
 Do not use question-paper page numbers for answer regions.
 
 =========================================================
-UNANSWERED QUESTIONS
-=========================================================
-
-If a question from the question paper has no corresponding
-student answer, add it to "unansweredQuestions".
-
-Example:
-
-{
-  "questionNumber": "4"
-}
-
-Do not create an answer or region for an unanswered question.
-
-=========================================================
-UNMATCHED ANSWERS
-=========================================================
-
-If handwriting or answer content exists but cannot be
-confidently associated with a question, put it in:
-
-"unmatchedAnswers"
-
-Include:
-
-- text
-- confidence
-- regions
-
-Do not force an uncertain answer into a question.
-
-=========================================================
 CONFIDENCE
 =========================================================
 
@@ -445,6 +545,8 @@ For every detected answer verify:
 11. Does the region include ALL of those elements?
 12. Does the region accidentally include the next question?
 13. Are the coordinates normalized from 0 to 1000?
+14. Is the score within the allowed maximum?
+15. Is the feedback consistent with the score?
 
 Most importantly:
 
@@ -465,7 +567,8 @@ Use exactly this structure:
     {
       "number": "1",
       "text": "What is photosynthesis?",
-      "order": 1
+      "order": 1,
+      "maxScore": 2
     }
   ],
 
@@ -474,6 +577,9 @@ Use exactly this structure:
       "questionNumber": "1",
       "text": "Complete student answer",
       "status": "answered",
+      "score": 2,
+      "maxScore": 2,
+      "feedback": "The answer correctly explains photosynthesis and includes the key required details.",
       "confidence": 0.95,
       "regions": [
         {
@@ -491,7 +597,10 @@ Use exactly this structure:
 
   "unansweredQuestions": [
     {
-      "questionNumber": "4"
+      "questionNumber": "4",
+      "maxScore": 2,
+      "score": 0,
+      "feedback": "No answer was found for this question."
     }
   ],
 
@@ -499,6 +608,9 @@ Use exactly this structure:
     {
       "text": "Unmatched student answer",
       "confidence": 0.30,
+      "score": null,
+      "maxScore": null,
+      "feedback": "",
       "regions": [
         {
           "page": 2,

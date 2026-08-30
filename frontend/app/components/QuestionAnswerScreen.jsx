@@ -30,27 +30,41 @@ export default function QuestionAnswerScreen({
 }) {
   const extractedData = results?.data || results || {};
 
-  const questions = extractedData.questions || [];
-  const answers = extractedData.answers || [];
-  const unansweredQuestions =
-    extractedData.unansweredQuestions || [];
-  const unmatchedAnswers =
-    extractedData.unmatchedAnswers || [];
+  const questions = Array.isArray(extractedData.questions)
+    ? extractedData.questions
+    : [];
+
+  const answers = Array.isArray(extractedData.answers)
+    ? extractedData.answers
+    : [];
+
+  const unansweredQuestions = Array.isArray(
+    extractedData.unansweredQuestions
+  )
+    ? extractedData.unansweredQuestions
+    : [];
+
+  const unmatchedAnswers = Array.isArray(
+    extractedData.unmatchedAnswers
+  )
+    ? extractedData.unmatchedAnswers
+    : [];
 
   const [selected, setSelected] = useState(
-    questions[0]?.number || null
+    questions[0]?.number
+      ? String(questions[0].number)
+      : null
   );
 
   const [expandedQuestions, setExpandedQuestions] =
     useState(
       questions[0]?.number
-        ? [questions[0].number]
+        ? [String(questions[0].number)]
         : []
     );
 
   const [currentPage, setCurrentPage] = useState(1);
   const [zoom, setZoom] = useState(100);
-
   const [mobileView, setMobileView] =
     useState("questions");
 
@@ -128,25 +142,27 @@ export default function QuestionAnswerScreen({
   const totalPages = useMemo(() => {
     let highestPage = 1;
 
-    answers.forEach((answer) => {
-      answer.regions?.forEach((region) => {
-        const page = Number(region.page);
-
-        if (page > highestPage) {
-          highestPage = page;
+    const collectPages = (items) => {
+      items.forEach((item) => {
+        if (!Array.isArray(item?.regions)) {
+          return;
         }
-      });
-    });
 
-    unmatchedAnswers.forEach((answer) => {
-      answer.regions?.forEach((region) => {
-        const page = Number(region.page);
+        item.regions.forEach((region) => {
+          const page = Number(region?.page);
 
-        if (page > highestPage) {
-          highestPage = page;
-        }
+          if (
+            Number.isFinite(page) &&
+            page > highestPage
+          ) {
+            highestPage = page;
+          }
+        });
       });
-    });
+    };
+
+    collectPages(answers);
+    collectPages(unmatchedAnswers);
 
     return highestPage;
   }, [answers, unmatchedAnswers]);
@@ -188,11 +204,12 @@ export default function QuestionAnswerScreen({
 
     if (answer?.regions?.length) {
       const firstPage = Number(
-        answer.regions[0].page
+        answer.regions[0]?.page
       );
 
       if (
-        firstPage &&
+        Number.isFinite(firstPage) &&
+        firstPage >= 1 &&
         firstPage <= totalPages
       ) {
         setCurrentPage(firstPage);
@@ -232,20 +249,122 @@ export default function QuestionAnswerScreen({
     const answer =
       getAnswerForQuestion(question);
 
+    if (answer) {
+      const score = answer.score;
+      const maxScore = answer.maxScore;
+
+      if (
+        score !== null &&
+        score !== undefined &&
+        maxScore !== null &&
+        maxScore !== undefined
+      ) {
+        return `${score} / ${maxScore}`;
+      }
+
+      if (
+        score !== null &&
+        score !== undefined
+      ) {
+        return String(score);
+      }
+    }
+
     if (isQuestionUnanswered(question)) {
+      const maxScore = question.maxScore;
+
+      if (
+        maxScore !== null &&
+        maxScore !== undefined
+      ) {
+        return `0 / ${maxScore}`;
+      }
+
       return "0 / ?";
     }
 
-    if (!answer) {
-      return "—";
+    return "—";
+  };
+
+  const getFeedback = (question) => {
+    const answer =
+      getAnswerForQuestion(question);
+
+    if (answer?.feedback) {
+      return answer.feedback;
     }
 
-    return answer.score || "—";
+    if (isQuestionUnanswered(question)) {
+      return "No answer was found for this question.";
+    }
+
+    return "No AI feedback is available for this question.";
+  };
+
+  const getScoreStyle = (question) => {
+    const answer =
+      getAnswerForQuestion(question);
+
+    if (isQuestionUnanswered(question)) {
+      return "bg-[#f1f1f1] text-[#888888]";
+    }
+
+    if (!answer) {
+      return "bg-[#fff0e9] text-[#ef6847]";
+    }
+
+    const score = Number(answer.score);
+    const maxScore = Number(answer.maxScore);
+
+    if (
+      Number.isFinite(score) &&
+      Number.isFinite(maxScore) &&
+      maxScore > 0
+    ) {
+      const percentage =
+        (score / maxScore) * 100;
+
+      if (percentage >= 80) {
+        return "bg-[#e6f7e4] text-[#3fa43b]";
+      }
+
+      if (percentage >= 50) {
+        return "bg-[#fff2df] text-[#d98928]";
+      }
+
+      return "bg-[#ffe7df] text-[#e85e3f]";
+    }
+
+    return "bg-[#e6f7e4] text-[#3fa43b]";
+  };
+
+  const getFeedbackScore = (question) => {
+    const answer =
+      getAnswerForQuestion(question);
+
+    if (!answer) {
+      return null;
+    }
+
+    if (
+      answer.score === null ||
+      answer.score === undefined
+    ) {
+      return null;
+    }
+
+    if (
+      answer.maxScore === null ||
+      answer.maxScore === undefined
+    ) {
+      return null;
+    }
+
+    return `${answer.score} / ${answer.maxScore}`;
   };
 
   const isPdf =
-    answerSheet?.type ===
-    "application/pdf";
+    answerSheet?.type === "application/pdf";
 
   const isImage =
     answerSheet?.type?.startsWith("image/");
@@ -403,7 +522,7 @@ export default function QuestionAnswerScreen({
                     mobileView ===
                     "questions"
                       ? "bg-[#303030] text-white"
-                      : "text-[#555]"
+                      : "text-[#555555]"
                   }
                 `}
               >
@@ -424,7 +543,7 @@ export default function QuestionAnswerScreen({
                     mobileView ===
                     "answers"
                       ? "bg-[#303030] text-white"
-                      : "text-[#555]"
+                      : "text-[#555555]"
                   }
                 `}
               >
@@ -436,8 +555,6 @@ export default function QuestionAnswerScreen({
           </div>
 
           <div className="flex min-h-0 flex-1 overflow-hidden pt-[10px] lg:pt-0">
-
-            {/* QUESTIONS */}
 
             <section
               className={`
@@ -461,7 +578,7 @@ export default function QuestionAnswerScreen({
                 <h2 className="text-[16px] font-semibold">
                   Extracted Questions
 
-                  <span className="font-normal text-[#777]">
+                  <span className="font-normal text-[#777777]">
                     {" "}
                     (from question paper)
                   </span>
@@ -568,13 +685,9 @@ export default function QuestionAnswerScreen({
                                 <span
                                   className={`
                                     mt-0.5 shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold
-                                    ${
-                                      unanswered
-                                        ? "bg-[#f1f1f1] text-[#888]"
-                                        : answer
-                                          ? "bg-[#e6f7e4] text-[#3fa43b]"
-                                          : "bg-[#fff0e9] text-[#ef6847]"
-                                    }
+                                    ${getScoreStyle(
+                                      question
+                                    )}
                                   `}
                                 >
                                   {getScore(
@@ -586,7 +699,7 @@ export default function QuestionAnswerScreen({
 
                             </div>
 
-                            <div className="pt-1 text-[#777]">
+                            <div className="pt-1 text-[#777777]">
                               {isExpanded ? (
                                 <ChevronUp size={17} />
                               ) : (
@@ -596,50 +709,66 @@ export default function QuestionAnswerScreen({
 
                           </button>
 
-                          {isExpanded &&
-                            answer && (
-                              <div className="mx-3 mb-3 rounded-[10px] bg-[#f1f1f1] p-3">
+                          {isExpanded && (
+                            <div className="mx-3 mb-3 rounded-[10px] bg-[#f1f1f1] p-3">
 
-                                <div className="flex items-center justify-between">
-
-                                  <p className="text-[12px] font-semibold">
-                                    AI Feedback
-                                  </p>
-
-                                  {answer.confidence != null && (
-                                    <span className="text-[10px] text-[#888]">
-                                      {Math.round(
-                                        answer.confidence *
-                                          100
-                                      )}
-                                      % confidence
-                                    </span>
-                                  )}
-
-                                </div>
-
-                                <p className="mt-2 whitespace-pre-line text-[12px] leading-[140%] text-[#555]">
-                                  {answer.text}
-                                </p>
-
-                              </div>
-                            )}
-
-                          {isExpanded &&
-                            unanswered && (
-                              <div className="mx-3 mb-3 rounded-[10px] bg-[#f1f1f1] p-3">
+                              <div className="flex items-center justify-between gap-3">
 
                                 <p className="text-[12px] font-semibold">
                                   AI Feedback
                                 </p>
 
-                                <p className="mt-1 text-[12px] text-[#888]">
-                                  No answer was found for
-                                  this question.
-                                </p>
+                                <div className="flex items-center gap-2">
+
+                                  {getFeedbackScore(
+                                    question
+                                  ) && (
+                                    <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-[#555555]">
+                                      {
+                                        getFeedbackScore(
+                                          question
+                                        )
+                                      }
+                                    </span>
+                                  )}
+
+                                  {answer?.confidence != null && (
+                                    <span className="text-[10px] text-[#888888]">
+                                      {Math.round(
+                                        Number(
+                                          answer.confidence
+                                        ) * 100
+                                      )}
+                                      %
+                                    </span>
+                                  )}
+
+                                </div>
 
                               </div>
-                            )}
+
+                              <p className="mt-2 text-[12px] leading-[140%] text-[#555555]">
+                                {getFeedback(
+                                  question
+                                )}
+                              </p>
+
+                              {answer?.text && (
+                                <div className="mt-3 rounded-[8px] bg-white p-2.5">
+
+                                  <p className="text-[10px] font-semibold text-[#777777]">
+                                    Student Answer
+                                  </p>
+
+                                  <p className="mt-1 whitespace-pre-line text-[11px] leading-[140%] text-[#555555]">
+                                    {answer.text}
+                                  </p>
+
+                                </div>
+                              )}
+
+                            </div>
+                          )}
 
                         </div>
                       );
@@ -651,8 +780,6 @@ export default function QuestionAnswerScreen({
               </div>
 
             </section>
-
-            {/* ANSWER SHEET */}
 
             <section
               className={`
@@ -817,7 +944,7 @@ export default function QuestionAnswerScreen({
                         {selectedAnswer &&
                           selectedRegions.length >
                             0 && (
-                            <div className="mt-3 rounded-lg bg-white px-4 py-3 text-[11px] text-[#777] shadow-sm">
+                            <div className="mt-3 rounded-lg bg-white px-4 py-3 text-[11px] text-[#777777] shadow-sm">
                               Answer detected on
                               page{" "}
                               {currentPage}.
