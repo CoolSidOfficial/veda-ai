@@ -600,7 +600,6 @@ terraform.rc
 *.txt
 *.md
 *.markdown
-*.json
 *.xml
 *.yml
 *.yaml
