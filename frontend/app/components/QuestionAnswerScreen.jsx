@@ -21,6 +21,7 @@ import {
   Clock3,
   ClipboardList,
   BookOpen,
+  Menu,
 } from "lucide-react";
 
 export default function QuestionAnswerScreen({
@@ -48,8 +49,10 @@ export default function QuestionAnswerScreen({
     );
 
   const [currentPage, setCurrentPage] = useState(1);
-
   const [zoom, setZoom] = useState(100);
+
+  const [mobileView, setMobileView] =
+    useState("questions");
 
   const answerImageRef = useRef(null);
 
@@ -147,19 +150,6 @@ export default function QuestionAnswerScreen({
 
     return highestPage;
   }, [answers, unmatchedAnswers]);
-
-  /*
-   * Gemini now returns normalized coordinates:
-   *
-   * x      = 0 - 1000
-   * y      = 0 - 1000
-   * width  = 0 - 1000
-   * height = 0 - 1000
-   *
-   * The overlay is positioned relative to the displayed
-   * image, so we convert the normalized values directly
-   * into percentages.
-   */
 
   const getRegionStyle = (bbox) => {
     if (!bbox) {
@@ -304,716 +294,562 @@ export default function QuestionAnswerScreen({
   }
 
   return (
-    <main className="h-screen overflow-hidden bg-[#e8e8e8] font-bricolage text-[#303030]">
+    <main className="h-screen overflow-hidden bg-[#cecece] text-[#303030]">
 
-      <header className="flex h-[64px] items-center justify-between border-b border-[#e5e5e5] bg-white px-5">
+      <header className="fixed left-[10px] right-[10px] top-[12px] z-50 flex h-[56px] items-center justify-between rounded-[16px] bg-white px-3 lg:left-[86px] lg:right-[13px] lg:top-[12px] lg:px-5">
 
-        <div className="flex items-center gap-4">
-          <button
-            className="
-              flex h-9 w-9
-              items-center
-              justify-center
-              rounded-full
-              transition
-              hover:bg-[#f5f5f5]
-            "
-          >
-            <ArrowLeft size={18} />
+        <div className="flex items-center gap-3">
+
+          <button className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-[#f5f5f5]">
+            <ArrowLeft size={20} />
           </button>
 
-          <div className="flex items-center gap-2 text-[12px] text-[#8a8a8a]">
-            <FileText size={14} />
+          <span className="font-['Bricolage_Grotesque'] text-[20px] font-bold lg:hidden">
+            VedaAI
+          </span>
 
-            <span>
-              Exams
-            </span>
+          <div className="hidden items-center gap-2 text-[13px] text-[#8a8a8a] lg:flex">
+            <FileText size={16} />
+            Exams
           </div>
+
         </div>
 
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-3">
 
-          <button className="hidden h-7 w-7 items-center justify-center sm:flex">
+          <button className="hidden h-8 w-8 items-center justify-center rounded-full bg-[#f6f6f6] lg:flex">
             <span className="text-[15px]">
               ?
             </span>
           </button>
 
-          <button className="relative">
-            <Bell size={17} />
+          <button className="relative flex h-9 w-9 items-center justify-center rounded-full bg-[#f6f6f6]">
+            <Bell size={19} />
 
-            <span
-              className="
-                absolute
-                -right-1
-                -top-1
-                h-[6px]
-                w-[6px]
-                rounded-full
-                bg-[#ff6242]
-              "
-            />
+            <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-[#ff6242]" />
           </button>
 
-          <div className="flex items-center gap-2">
-
-            <div
-              className="
-                flex h-8 w-8
-                items-center
-                justify-center
-                rounded-full
-                bg-[#f2ddd5]
-                text-sm
-              "
-            >
-              👨🏻
-            </div>
-
-            <span className="hidden text-[12px] sm:block">
-              Madhur Rastogi
-            </span>
-
-            <ChevronDown
-              size={13}
-              className="hidden sm:block"
-            />
-
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f6f6f6] lg:bg-[#f2ddd5]">
+            👨🏻
           </div>
+
+          <span className="hidden text-[12px] lg:block">
+            Madhur Rastogi
+          </span>
+
+          <ChevronDown
+            size={15}
+            className="hidden lg:block"
+          />
+
+          <Menu
+            size={22}
+            className="lg:hidden"
+          />
+
         </div>
+
       </header>
 
-      <div className="flex h-[calc(100vh-64px)] overflow-hidden">
+      <div className="flex h-full overflow-hidden pt-[80px]">
 
-        <aside
-          className="
-            hidden
-            w-[72px]
-            shrink-0
-            flex-col
-            items-center
-            border-r
-            border-[#e5e5e5]
-            bg-white
-            py-4
-            md:flex
-          "
-        >
+        <aside className="fixed left-[10px] top-[80px] hidden h-[calc(100vh-91px)] w-[64px] shrink-0 flex-col items-center rounded-[16px] bg-white py-4 shadow-sm lg:flex">
 
-          <div
-            className="
-              flex h-9 w-9
-              items-center
-              justify-center
-              rounded-lg
-              bg-[#303030]
-            "
-          >
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#303030]">
             <span className="text-lg font-black text-white">
               V
             </span>
           </div>
 
-          <button
-            className="
-              mt-7
-              flex h-9 w-9
-              items-center
-              justify-center
-              rounded-full
-              border-2
-              border-[#ff8d36]
-              bg-[#292929]
-              text-white
-            "
-          >
+          <button className="mt-7 flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#ff8d36] bg-[#292929] text-white">
             ✦
           </button>
 
-          <div
-            className="
-              mt-8
-              flex
-              flex-col
-              items-center
-              gap-7
-              text-[#777]
-            "
-          >
-            <Grid2X2 size={16} />
-            <BookOpen size={16} />
-            <ClipboardList size={16} />
-            <FileText size={16} />
-            <Clock3 size={16} />
+          <div className="mt-8 flex flex-col items-center gap-7 text-[#777]">
+            <Grid2X2 size={17} />
+            <BookOpen size={17} />
+            <ClipboardList size={17} />
+            <FileText size={17} />
+            <Clock3 size={17} />
           </div>
 
-          <div className="mt-auto">
-
-            <div
-              className="
-                flex h-9 w-9
-                items-center
-                justify-center
-                rounded-full
-                bg-[#f0f0f0]
-              "
-            >
-              ♕
-            </div>
-
+          <div className="mt-auto flex h-9 w-9 items-center justify-center rounded-full bg-[#f0f0f0]">
+            ♕
           </div>
 
           <span className="mt-4 text-sm text-[#777]">
             »
           </span>
+
         </aside>
 
-        <section
-          className="
-            flex
-            w-full
-            max-w-[640px]
-            shrink-0
-            flex-col
-            bg-[#eeeeee]
-          "
-        >
+        <div className="flex min-w-0 flex-1 flex-col lg:ml-[74px]">
 
-          <div
-            className="
-              flex
-              min-h-[70px]
-              items-center
-              justify-between
-              px-5
-            "
-          >
+          <div className="flex justify-center px-[18px] pt-[10px] lg:hidden">
 
-            <h2 className="text-[14px] font-semibold">
-              Extracted Questions
+            <div className="flex h-[40px] w-full max-w-[357px] rounded-full bg-[#bcbcbc] p-[3px]">
 
-              <span className="font-normal text-[#777]">
-                {" "}
-                (from question paper)
-              </span>
-            </h2>
+              <button
+                onClick={() =>
+                  setMobileView("questions")
+                }
+                className={`
+                  flex-1
+                  rounded-full
+                  text-[13px]
+                  font-semibold
+                  transition
+                  ${
+                    mobileView ===
+                    "questions"
+                      ? "bg-[#303030] text-white"
+                      : "text-[#555]"
+                  }
+                `}
+              >
+                Exam Grading
+              </button>
 
-            <button
-              onClick={
-                allExpanded
-                  ? collapseAll
-                  : expandAll
-              }
-              className="
-                rounded-[9px]
-                bg-white
-                px-4
-                py-2
-                text-[11px]
-                font-medium
-                shadow-sm
-                transition
-                hover:bg-[#f7f7f7]
-              "
-            >
-              {allExpanded
-                ? "Collapse All"
-                : "Expand All"}
-            </button>
-          </div>
-
-          <div
-            className="
-              flex-1
-              overflow-y-auto
-              px-4
-              pb-8
-            "
-          >
-
-            <div className="space-y-3">
-
-              {questions.map((question) => {
-
-                const id =
-                  getQuestionId(question);
-
-                const isSelected =
-                  selected === id;
-
-                const isExpanded =
-                  expandedQuestions.includes(id);
-
-                const answer =
-                  getAnswerForQuestion(question);
-
-                const unanswered =
-                  isQuestionUnanswered(
-                    question
-                  );
-
-                return (
-                  <div
-                    key={id}
-                    className={`
-                      w-full
-                      rounded-[16px]
-                      bg-white
-                      transition-all
-                      ${
-                        isSelected
-                          ? "border-2 border-[#ff8d36]"
-                          : "border-2 border-transparent"
-                      }
-                    `}
-                  >
-
-                    <button
-                      onClick={() =>
-                        toggleQuestion(
-                          question
-                        )
-                      }
-                      className="
-                        flex
-                        w-full
-                        items-start
-                        gap-3
-                        p-3
-                        text-left
-                      "
-                    >
-
-                      <div
-                        className={`
-                          flex
-                          h-8
-                          w-8
-                          shrink-0
-                          items-center
-                          justify-center
-                          rounded-full
-                          text-[13px]
-                          font-semibold
-                          text-white
-                          ${
-                            isSelected
-                              ? "bg-[#ff633f]"
-                              : "bg-[#626262]"
-                          }
-                        `}
-                      >
-                        {question.number}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-
-                        <div className="flex items-start gap-4">
-
-                          <p
-                            className="
-                              flex-1
-                              text-[16px]
-                              font-normal
-                              leading-[140%]
-                              tracking-[-0.64px]
-                              text-[#303030]
-                            "
-                          >
-                            {question.sub && (
-                              <span className="mr-2 font-semibold">
-                                {question.sub}
-                              </span>
-                            )}
-
-                            {question.text}
-                          </p>
-
-                          <span
-                            className={`
-                              mt-0.5
-                              shrink-0
-                              rounded-full
-                              px-3
-                              py-1
-                              text-[11px]
-                              font-semibold
-                              ${
-                                unanswered
-                                  ? "bg-[#f1f1f1] text-[#888]"
-                                  : answer
-                                    ? "bg-[#e6f7e4] text-[#3fa43b]"
-                                    : "bg-[#fff0e9] text-[#ef6847]"
-                              }
-                            `}
-                          >
-                            {getScore(question)}
-                          </span>
-
-                        </div>
-                      </div>
-
-                      <div className="pt-1 text-[#777]">
-
-                        {isExpanded ? (
-                          <ChevronUp
-                            size={17}
-                          />
-                        ) : (
-                          <ChevronDown
-                            size={17}
-                          />
-                        )}
-
-                      </div>
-
-                    </button>
-
-                    {isExpanded && answer && (
-                      <div
-                        className="
-                          mx-3
-                          mb-3
-                          rounded-[10px]
-                          bg-[#f5f5f5]
-                          p-3
-                        "
-                      >
-
-                        <div className="flex items-center justify-between">
-
-                          <p className="text-[12px] font-semibold">
-                            Student Answer
-                          </p>
-
-                          {answer.confidence != null && (
-                            <span className="text-[10px] text-[#888]">
-                              {Math.round(
-                                answer.confidence *
-                                  100
-                              )}
-                              % confidence
-                            </span>
-                          )}
-
-                        </div>
-
-                        <p
-                          className="
-                            mt-2
-                            whitespace-pre-line
-                            text-[12px]
-                            leading-[140%]
-                            text-[#555]
-                          "
-                        >
-                          {answer.text}
-                        </p>
-
-                      </div>
-                    )}
-
-                    {isExpanded && unanswered && (
-                      <div
-                        className="
-                          mx-3
-                          mb-3
-                          rounded-[10px]
-                          bg-[#f5f5f5]
-                          p-3
-                        "
-                      >
-
-                        <p className="text-[12px] font-semibold">
-                          Unanswered
-                        </p>
-
-                        <p className="mt-1 text-[12px] text-[#888]">
-                          No answer was found for
-                          this question.
-                        </p>
-
-                      </div>
-                    )}
-
-                  </div>
-                );
-              })}
+              <button
+                onClick={() =>
+                  setMobileView("answers")
+                }
+                className={`
+                  flex-1
+                  rounded-full
+                  text-[13px]
+                  font-semibold
+                  transition
+                  ${
+                    mobileView ===
+                    "answers"
+                      ? "bg-[#303030] text-white"
+                      : "text-[#555]"
+                  }
+                `}
+              >
+                Assignment Grading
+              </button>
 
             </div>
+
           </div>
-        </section>
 
-        <section
-          className="
-            hidden
-            min-w-0
-            flex-1
-            flex-col
-            bg-[#d7d7d7]
-            md:flex
-          "
-        >
+          <div className="flex min-h-0 flex-1 overflow-hidden pt-[10px] lg:pt-0">
 
-          <div
-            className="
-              flex
-              h-[58px]
-              shrink-0
-              items-center
-              justify-between
-              bg-[#292929]
-              px-5
-              text-white
-            "
-          >
+            {/* QUESTIONS */}
 
-            <span className="text-[12px] font-medium">
-              Answer Sheet
-            </span>
+            <section
+              className={`
+                w-full
+                flex-col
+                bg-[#cecece]
+                lg:flex
+                lg:w-[672px]
+                lg:shrink-0
+                ${
+                  mobileView ===
+                  "questions"
+                    ? "flex"
+                    : "hidden"
+                }
+              `}
+            >
 
-            <div className="flex items-center gap-2">
+              <div className="flex min-h-[64px] items-center justify-between px-[18px] lg:px-5">
 
-              <button
-                onClick={zoomOut}
-                className="
-                  flex h-8 w-8
-                  items-center
-                  justify-center
-                  rounded-md
-                  bg-[#414141]
-                  transition
-                  hover:bg-[#4b4b4b]
-                "
-              >
-                <ZoomOut size={14} />
-              </button>
+                <h2 className="text-[16px] font-semibold">
+                  Extracted Questions
 
-              <span className="px-1 text-[11px]">
-                {zoom}%
-              </span>
-
-              <button
-                onClick={zoomIn}
-                className="
-                  flex h-8 w-8
-                  items-center
-                  justify-center
-                  rounded-md
-                  bg-[#414141]
-                  transition
-                  hover:bg-[#4b4b4b]
-                "
-              >
-                <ZoomIn size={14} />
-              </button>
-
-              <div
-                className="
-                  ml-3
-                  flex h-8
-                  items-center
-                  gap-2
-                  rounded-md
-                  bg-[#414141]
-                  px-3
-                "
-              >
+                  <span className="font-normal text-[#777]">
+                    {" "}
+                    (from question paper)
+                  </span>
+                </h2>
 
                 <button
-                  onClick={previousPage}
-                  disabled={
-                    currentPage === 1
+                  onClick={
+                    allExpanded
+                      ? collapseAll
+                      : expandAll
                   }
-                  className="disabled:opacity-40"
+                  className="rounded-[9px] bg-white px-4 py-2 text-[11px] font-medium shadow-sm"
                 >
-                  <ChevronLeft size={13} />
-                </button>
-
-                <span className="text-[10px]">
-                  Page {currentPage} of{" "}
-                  {totalPages}
-                </span>
-
-                <button
-                  onClick={nextPage}
-                  disabled={
-                    currentPage ===
-                    totalPages
-                  }
-                  className="disabled:opacity-40"
-                >
-                  <ChevronRight size={13} />
+                  {allExpanded
+                    ? "Collapse All"
+                    : "Expand All"}
                 </button>
 
               </div>
-            </div>
-          </div>
 
-          <div
-            className="
-              flex-1
-              overflow-auto
-              p-6
-            "
-          >
+              <div className="flex-1 overflow-y-auto px-[18px] pb-8 lg:px-4">
 
-            <div
-              className="mx-auto w-fit rounded-sm"
-              style={{
-                zoom: `${zoom}%`,
-              }}
-            >
+                <div className="space-y-3">
 
-              {isImage &&
-                answerSheetUrl && (
-                  <div
-                    className="
-                      relative
-                      w-[720px]
-                      bg-white
-                      shadow-lg
-                    "
-                  >
+                  {questions.map(
+                    (question) => {
 
-                    <img
-                      ref={answerImageRef}
-                      src={answerSheetUrl}
-                      alt="Student answer sheet"
-                      className="
-                        block
-                        h-auto
-                        w-[720px]
-                        max-w-none
-                      "
-                    />
+                      const id =
+                        getQuestionId(
+                          question
+                        );
 
-                    {selectedRegions.map(
-                      (region, index) => {
+                      const isSelected =
+                        selected === id;
 
-                        const regionStyle =
-                          getRegionStyle(
-                            region.bbox
-                          );
+                      const isExpanded =
+                        expandedQuestions.includes(
+                          id
+                        );
 
-                        if (!regionStyle) {
-                          return null;
-                        }
+                      const answer =
+                        getAnswerForQuestion(
+                          question
+                        );
 
-                        return (
-                          <div
-                            key={`${selected}-${currentPage}-${index}`}
-                            className="
-                              pointer-events-none
-                              absolute
-                              rounded-[8px]
-                              border-[3px]
-                              border-[#65bd55]
-                              bg-[#7ddc6e]/20
-                              shadow-[0_0_0_2px_rgba(255,255,255,0.7)]
-                            "
-                            style={
-                              regionStyle
+                      const unanswered =
+                        isQuestionUnanswered(
+                          question
+                        );
+
+                      return (
+                        <div
+                          key={id}
+                          className={`
+                            w-full
+                            rounded-[16px]
+                            bg-white
+                            ${
+                              isSelected
+                                ? "border-2 border-[#ff633f]"
+                                : "border-2 border-transparent"
                             }
+                          `}
+                        >
+
+                          <button
+                            onClick={() =>
+                              toggleQuestion(
+                                question
+                              )
+                            }
+                            className="flex w-full items-start gap-3 p-3 text-left"
                           >
 
-                            <span
-                              className="
-                                absolute
-                                -left-[3px]
-                                -top-[27px]
-                                rounded-t-[6px]
-                                bg-[#65bd55]
-                                px-3
-                                py-1
-                                text-[10px]
-                                font-semibold
-                                text-white
-                                whitespace-nowrap
-                              "
+                            <div
+                              className={`
+                                flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold text-white
+                                ${
+                                  isSelected
+                                    ? "bg-[#ff633f]"
+                                    : "bg-[#626262]"
+                                }
+                              `}
                             >
-                              Q
-                              {
-                                selectedQuestion?.number
-                              }
-                            </span>
+                              {question.number}
+                            </div>
 
-                          </div>
-                        );
+                            <div className="min-w-0 flex-1">
+
+                              <div className="flex items-start gap-3">
+
+                                <p className="flex-1 text-[14px] font-normal leading-[140%] tracking-[-0.3px] text-[#303030] lg:text-[16px]">
+
+                                  {question.sub && (
+                                    <span className="mr-2 font-semibold">
+                                      {question.sub}
+                                    </span>
+                                  )}
+
+                                  {question.text}
+
+                                </p>
+
+                                <span
+                                  className={`
+                                    mt-0.5 shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold
+                                    ${
+                                      unanswered
+                                        ? "bg-[#f1f1f1] text-[#888]"
+                                        : answer
+                                          ? "bg-[#e6f7e4] text-[#3fa43b]"
+                                          : "bg-[#fff0e9] text-[#ef6847]"
+                                    }
+                                  `}
+                                >
+                                  {getScore(
+                                    question
+                                  )}
+                                </span>
+
+                              </div>
+
+                            </div>
+
+                            <div className="pt-1 text-[#777]">
+                              {isExpanded ? (
+                                <ChevronUp size={17} />
+                              ) : (
+                                <ChevronDown size={17} />
+                              )}
+                            </div>
+
+                          </button>
+
+                          {isExpanded &&
+                            answer && (
+                              <div className="mx-3 mb-3 rounded-[10px] bg-[#f1f1f1] p-3">
+
+                                <div className="flex items-center justify-between">
+
+                                  <p className="text-[12px] font-semibold">
+                                    AI Feedback
+                                  </p>
+
+                                  {answer.confidence != null && (
+                                    <span className="text-[10px] text-[#888]">
+                                      {Math.round(
+                                        answer.confidence *
+                                          100
+                                      )}
+                                      % confidence
+                                    </span>
+                                  )}
+
+                                </div>
+
+                                <p className="mt-2 whitespace-pre-line text-[12px] leading-[140%] text-[#555]">
+                                  {answer.text}
+                                </p>
+
+                              </div>
+                            )}
+
+                          {isExpanded &&
+                            unanswered && (
+                              <div className="mx-3 mb-3 rounded-[10px] bg-[#f1f1f1] p-3">
+
+                                <p className="text-[12px] font-semibold">
+                                  AI Feedback
+                                </p>
+
+                                <p className="mt-1 text-[12px] text-[#888]">
+                                  No answer was found for
+                                  this question.
+                                </p>
+
+                              </div>
+                            )}
+
+                        </div>
+                      );
+                    }
+                  )}
+
+                </div>
+
+              </div>
+
+            </section>
+
+            {/* ANSWER SHEET */}
+
+            <section
+              className={`
+                min-w-0
+                flex-1
+                flex-col
+                bg-[#d7d7d7]
+                lg:flex
+                ${
+                  mobileView ===
+                  "answers"
+                    ? "flex"
+                    : "hidden"
+                }
+              `}
+            >
+
+              <div className="flex h-[58px] shrink-0 items-center justify-between bg-[#292929] px-4 text-white lg:px-5">
+
+                <span className="text-[14px] font-medium">
+                  Answer Sheet
+                </span>
+
+                <div className="flex items-center gap-2">
+
+                  <button
+                    onClick={zoomOut}
+                    className="flex h-8 w-8 items-center justify-center rounded-md bg-[#414141]"
+                  >
+                    <ZoomOut size={14} />
+                  </button>
+
+                  <span className="min-w-[35px] text-center text-[11px]">
+                    {zoom}%
+                  </span>
+
+                  <button
+                    onClick={zoomIn}
+                    className="flex h-8 w-8 items-center justify-center rounded-md bg-[#414141]"
+                  >
+                    <ZoomIn size={14} />
+                  </button>
+
+                  <div className="ml-2 flex h-8 items-center gap-2 rounded-md bg-[#414141] px-2 lg:ml-3 lg:px-3">
+
+                    <button
+                      onClick={
+                        previousPage
                       }
+                      disabled={
+                        currentPage === 1
+                      }
+                      className="disabled:opacity-40"
+                    >
+                      <ChevronLeft
+                        size={14}
+                      />
+                    </button>
+
+                    <span className="whitespace-nowrap text-[10px]">
+                      Page{" "}
+                      {currentPage} of{" "}
+                      {totalPages}
+                    </span>
+
+                    <button
+                      onClick={nextPage}
+                      disabled={
+                        currentPage ===
+                        totalPages
+                      }
+                      className="disabled:opacity-40"
+                    >
+                      <ChevronRight
+                        size={14}
+                      />
+                    </button>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              <div className="flex-1 overflow-auto p-4 lg:p-6">
+
+                <div
+                  className="mx-auto w-fit"
+                  style={{
+                    zoom: `${zoom}%`,
+                  }}
+                >
+
+                  {isImage &&
+                    answerSheetUrl && (
+                      <div className="relative w-[calc(100vw-36px)] max-w-[720px] bg-white shadow-lg lg:w-[720px]">
+
+                        <img
+                          ref={
+                            answerImageRef
+                          }
+                          src={
+                            answerSheetUrl
+                          }
+                          alt="Student answer sheet"
+                          className="block h-auto w-full max-w-none"
+                        />
+
+                        {selectedRegions.map(
+                          (
+                            region,
+                            index
+                          ) => {
+
+                            const regionStyle =
+                              getRegionStyle(
+                                region.bbox
+                              );
+
+                            if (
+                              !regionStyle
+                            ) {
+                              return null;
+                            }
+
+                            return (
+                              <div
+                                key={`${selected}-${currentPage}-${index}`}
+                                className="pointer-events-none absolute rounded-[8px] border-[3px] border-[#65bd55] bg-[#7ddc6e]/20 shadow-[0_0_0_2px_rgba(255,255,255,0.7)]"
+                                style={
+                                  regionStyle
+                                }
+                              >
+
+                                <span className="absolute -left-[3px] -top-[27px] rounded-t-[6px] bg-[#65bd55] px-3 py-1 text-[10px] font-semibold whitespace-nowrap text-white">
+                                  Q
+                                  {
+                                    selectedQuestion?.number
+                                  }
+                                </span>
+
+                              </div>
+                            );
+                          }
+                        )}
+
+                      </div>
                     )}
 
-                  </div>
-                )}
+                  {isPdf &&
+                    answerSheetUrl && (
+                      <div className="relative">
 
-              {isPdf &&
-                answerSheetUrl && (
-                  <div className="relative">
+                        <iframe
+                          src={
+                            answerSheetUrl
+                          }
+                          title="Student answer sheet"
+                          className="h-[900px] w-[calc(100vw-36px)] max-w-[720px] border-0 bg-white shadow-lg lg:w-[720px]"
+                        />
 
-                    <iframe
-                      src={answerSheetUrl}
-                      title="Student answer sheet"
-                      className="
-                        h-[900px]
-                        w-[720px]
-                        border-0
-                        bg-white
-                        shadow-lg
-                      "
-                    />
+                        {selectedAnswer &&
+                          selectedRegions.length >
+                            0 && (
+                            <div className="mt-3 rounded-lg bg-white px-4 py-3 text-[11px] text-[#777] shadow-sm">
+                              Answer detected on
+                              page{" "}
+                              {currentPage}.
+                            </div>
+                          )}
 
-                    {selectedAnswer &&
-                      selectedRegions.length >
-                        0 && (
-                        <div
-                          className="
-                            mt-3
-                            rounded-lg
-                            bg-white
-                            px-4
-                            py-3
-                            text-[11px]
-                            text-[#777]
-                            shadow-sm
-                          "
-                        >
-                          Answer detected on
-                          page{" "}
-                          {currentPage}.
-                          PDF highlighting will
-                          be enabled with the
-                          document renderer.
-                        </div>
-                      )}
+                      </div>
+                    )}
 
-                  </div>
-                )}
+                  {!answerSheetUrl && (
+                    <div className="flex h-[600px] w-[calc(100vw-36px)] max-w-[600px] items-center justify-center bg-white text-center text-sm text-gray-500 shadow-lg">
+                      Answer sheet preview
+                      unavailable.
+                    </div>
+                  )}
 
-              {!answerSheetUrl && (
-                <div
-                  className="
-                    flex
-                    h-[700px]
-                    w-[600px]
-                    items-center
-                    justify-center
-                    bg-white
-                    text-center
-                    text-sm
-                    text-gray-500
-                    shadow-lg
-                  "
-                >
-                  Answer sheet preview
-                  unavailable.
                 </div>
-              )}
 
-            </div>
+              </div>
+
+            </section>
+
           </div>
-        </section>
+
+        </div>
 
       </div>
+
+      <div className="fixed bottom-0 left-0 right-0 z-50 flex h-4 items-center justify-center lg:hidden">
+        <div className="h-0 w-[128px] border-t-[5px] border-[rgba(48,48,48,0.5)]" />
+      </div>
+
     </main>
   );
 }
