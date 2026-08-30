@@ -267,7 +267,7 @@ export default function UploadScreen({ onStartMapping }) {
                 {/* ANSWER SHEET */}
 
                 <label
-                  className={`flex h-[108px] cursor-pointer flex-col items-center justify-center rounded-[12px] border border-dashed bg-white transition ${
+                  className={`flex h-[140px] cursor-pointer flex-col items-center justify-center rounded-[12px] border border-dashed bg-white transition ${
                     answerSheet
                       ? "border-[#ff6341] bg-[#fffaf8]"
                       : "border-[#d7d7d7] hover:border-[#ff6341]"
