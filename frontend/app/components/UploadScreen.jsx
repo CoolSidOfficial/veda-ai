@@ -56,7 +56,7 @@ export default function UploadScreen({ onStartMapping }) {
       <div className="flex min-h-screen">
         {/* ================= SIDEBAR ================= */}
 
-        <aside className="hidden w-[220px] shrink-0 bg-white px-5 py-5 lg:flex lg:flex-col">
+        <aside className="hidden w-[304px] shrink-0 bg-white px-6 py-5 lg:flex lg:flex-col">
           {/* Logo */}
 
           <div className="flex items-center gap-2">
@@ -175,11 +175,11 @@ export default function UploadScreen({ onStartMapping }) {
           {/* ================= MAIN CONTENT ================= */}
 
           <section className="flex flex-1 justify-center overflow-auto">
-            <div className="w-full max-w-[760px] px-5 py-8 sm:px-8 sm:py-10 lg:px-10">
+            <div className="w-full max-w-[789px] px-5 py-8 sm:px-8 sm:py-10 lg:px-10">
               {/* ================= TITLE ================= */}
 
               <div className="text-center">
-                <h1 className="text-[23px] font-bold tracking-[-0.7px] sm:text-[25px]">
+                <h1 className="text-[28px] font-bold tracking-[-0.7px] sm:text-[30px]">
                   Upload{" "}
                   <span className="rounded-[5px] bg-[#fff0eb] px-1.5 text-[#ff5735]">
                     Question Paper &amp; Answer Sheets
@@ -193,7 +193,7 @@ export default function UploadScreen({ onStartMapping }) {
 
               {/* ================= TEACHER IMAGE ================= */}
 
-              <div className="relative mx-auto mt-5 flex h-[78px] w-[78px] items-center justify-center rounded-full bg-[#f7ddd5]">
+              <div className="relative mx-auto mt-5 flex h-[137px] w-[138px] items-center justify-center rounded-full bg-[#f7ddd5]">
                 <div className="flex h-[58px] w-[58px] items-center justify-center rounded-full border-[7px] border-[#ffd0c3] bg-[#f8eee9]">
                   <div className="flex h-[40px] w-[32px] items-center justify-center rounded-[10px] bg-white text-[21px] shadow-sm">
                     👩🏻‍🏫
@@ -215,7 +215,7 @@ export default function UploadScreen({ onStartMapping }) {
                 {/* QUESTION PAPER */}
 
                 <label
-                  className={`flex h-[108px] cursor-pointer flex-col items-center justify-center rounded-[12px] border border-dashed bg-white transition ${
+                  className={`flex h-[140px] cursor-pointer flex-col items-center justify-center rounded-[12px] border border-dashed bg-white transition ${
                     questionPaper
                       ? "border-[#ff6341] bg-[#fffaf8]"
                       : "border-[#d7d7d7] hover:border-[#ff6341]"
