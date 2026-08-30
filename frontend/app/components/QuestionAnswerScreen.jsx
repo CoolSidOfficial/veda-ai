@@ -753,19 +753,7 @@ export default function QuestionAnswerScreen({
                                 )}
                               </p>
 
-                              {answer?.text && (
-                                <div className="mt-3 rounded-[8px] bg-white p-2.5">
-
-                                  <p className="text-[10px] font-semibold text-[#777777]">
-                                    Student Answer
-                                  </p>
-
-                                  <p className="mt-1 whitespace-pre-line text-[11px] leading-[140%] text-[#555555]">
-                                    {answer.text}
-                                  </p>
-
-                                </div>
-                              )}
+                              
 
                             </div>
                           )}
