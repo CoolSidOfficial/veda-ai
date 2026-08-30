@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-
 import {
   ArrowLeft,
   Bell,
@@ -14,23 +13,25 @@ import {
   ClipboardList,
   FileText,
   Clock3,
-  Check,
+  Menu,
 } from "lucide-react";
 
 export default function UploadScreen({ onStartMapping }) {
   const [questionPaper, setQuestionPaper] = useState(null);
   const [answerSheet, setAnswerSheet] = useState(null);
 
-  const handleQuestionPaper = (event) => {
-    const file = event.target.files?.[0];
+  const canStart = questionPaper && answerSheet;
+
+  const handleQuestionPaper = (e) => {
+    const file = e.target.files?.[0];
 
     if (file) {
       setQuestionPaper(file);
     }
   };
 
-  const handleAnswerSheet = (event) => {
-    const file = event.target.files?.[0];
+  const handleAnswerSheet = (e) => {
+    const file = e.target.files?.[0];
 
     if (file) {
       setAnswerSheet(file);
@@ -38,9 +39,7 @@ export default function UploadScreen({ onStartMapping }) {
   };
 
   const handleStartMapping = () => {
-    if (!questionPaper || !answerSheet) {
-      return;
-    }
+    if (!canStart) return;
 
     onStartMapping({
       questionPaper,
@@ -48,305 +47,359 @@ export default function UploadScreen({ onStartMapping }) {
     });
   };
 
-  const canStart = questionPaper && answerSheet;
-  
-
   return (
-    <main className="min-h-screen bg-[#f5f5f5] text-[#292929]">
-      <div className="flex min-h-screen">
-        {/* ================= SIDEBAR ================= */}
+    <main className="min-h-screen bg-[linear-gradient(180deg,#EEEEEE_0%,#DADADA_100%)] text-[#292929]">
 
-        <aside className="hidden w-[304px] shrink-0 bg-white px-6 py-5 lg:flex lg:flex-col">
-          {/* Logo */}
+      <div className="min-h-screen">
+
+        {/* DESKTOP SIDEBAR */}
+
+        <aside className="fixed left-3 top-3 z-20 hidden h-[calc(100vh-24px)] w-[304px] rounded-[16px] bg-white p-6 shadow-[0_16px_48px_rgba(0,0,0,0.12),0_32px_48px_rgba(0,0,0,0.12)] lg:flex lg:flex-col">
 
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#303030]">
-              <span className="text-sm font-black text-white">V</span>
+
+            <div className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-[#303030]">
+              <span className="text-sm font-black text-white">
+                V
+              </span>
             </div>
 
-            <span className="text-[17px] font-bold">VedaAI</span>
+            <span className="text-[17px] font-bold">
+              VedaAI
+            </span>
+
           </div>
 
-          {/* AI Teacher Toolkit */}
-
-          <button className="mt-8 flex h-[32px] items-center justify-center gap-2 rounded-full border-2 border-[#ff6544] bg-[#292929] text-[10px] font-medium text-white">
-            <Sparkles size={12} />
+          <button className="mt-8 flex h-[38px] w-full items-center justify-center gap-2 rounded-full border-2 border-[#FF6544] bg-[#292929] text-[11px] font-medium text-white">
+            <Sparkles size={14} />
             AI Teacher's Toolkit
           </button>
 
-          {/* Navigation */}
-
           <nav className="mt-8 space-y-1">
-            <button className="flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-[10px] text-[#777]">
-              <Home size={13} />
+
+            <button className="flex h-[40px] w-full items-center gap-3 rounded-md px-3 text-[12px] text-[#777]">
+              <Home size={16} />
               Home
             </button>
 
-            <button className="flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-[10px] text-[#777]">
-              <BookOpen size={13} />
+            <button className="flex h-[40px] w-full items-center gap-3 rounded-md px-3 text-[12px] text-[#777]">
+              <BookOpen size={16} />
               My Classroom
             </button>
 
-            <button className="flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-[10px] text-[#777]">
-              <ClipboardList size={13} />
+            <button className="flex h-[40px] w-full items-center gap-3 rounded-md px-3 text-[12px] text-[#777]">
+              <ClipboardList size={16} />
               Assignments
             </button>
 
-            {/* Active */}
-
-            <button className="flex h-[30px] w-full items-center gap-2 rounded-md bg-[#eeeeee] px-2 text-[10px] font-medium text-[#222]">
-              <FileText size={13} />
+            <button className="flex h-[40px] w-full items-center gap-3 rounded-md bg-[#EEEEEE] px-3 text-[12px] font-medium text-[#222]">
+              <FileText size={16} />
               Exams
             </button>
 
-            <button className="flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-[10px] text-[#777]">
-              <Clock3 size={13} />
+            <button className="flex h-[40px] w-full items-center gap-3 rounded-md px-3 text-[12px] text-[#777]">
+              <Clock3 size={16} />
               My Library
             </button>
+
           </nav>
 
-          {/* School */}
+          <div className="mt-auto rounded-xl bg-[#F0F0F0] px-4 py-4">
 
-          <div className="mt-auto rounded-xl bg-[#f0f0f0] px-3 py-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white">
-                <span className="text-lg">♕</span>
+
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white">
+                <span className="text-lg">
+                  ♕
+                </span>
               </div>
 
               <div>
-                <p className="text-[10px] font-semibold">
+                <p className="text-[11px] font-semibold">
                   Delhi Public School
                 </p>
 
-                <p className="mt-0.5 text-[8px] text-gray-500">
+                <p className="mt-0.5 text-[9px] text-gray-500">
                   Bokaro Steel City
                 </p>
               </div>
+
             </div>
+
           </div>
+
         </aside>
 
-        {/* ================= RIGHT SIDE ================= */}
+        {/* MAIN */}
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          {/* ================= TOP BAR ================= */}
+        <div className="min-h-screen lg:ml-[304px]">
 
-          <header className="flex h-[61px] items-center justify-between border-b border-[#e5e5e5] bg-white px-4 sm:px-6">
-            {/* Left */}
+          {/* DESKTOP HEADER */}
+
+          <header className="mx-3 mt-3 hidden h-[56px] items-center justify-between rounded-[16px] bg-[rgba(255,255,255,0.75)] px-4 sm:px-6 lg:flex">
 
             <div className="flex items-center gap-3">
-              <button className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100">
-                <ArrowLeft size={18} />
+
+              <button className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100">
+                <ArrowLeft size={20} />
               </button>
 
-              <div className="flex items-center gap-2 text-[11px] text-gray-400">
-                <FileText size={13} />
+              <div className="flex items-center gap-2 text-[13px] text-[#A9A9A9]">
+                <FileText size={16} />
                 Exams
               </div>
+
             </div>
 
-            {/* Right */}
+            <div className="flex items-center gap-4">
 
-            <div className="hidden items-center gap-4 sm:flex">
-              <CircleHelp size={17} />
+              <CircleHelp size={19} />
 
               <div className="relative">
-                <Bell size={17} />
 
-                <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-[#ff5b3d]" />
+                <Bell size={19} />
+
+                <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#FF5623]" />
+
               </div>
 
               <div className="h-5 w-px bg-gray-200" />
 
               <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f1d9d0]">
+
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F1D9D0]">
                   👨🏻
                 </div>
 
-                <span className="text-[10px]">
+                <span className="text-[12px] font-medium">
                   Madhur Rastogi
                 </span>
 
-                <ChevronDown size={13} />
+                <ChevronDown size={15} />
+
               </div>
+
             </div>
+
           </header>
 
-          {/* ================= MAIN CONTENT ================= */}
+          {/* MOBILE HEADER */}
 
-          <section className="flex flex-1 justify-center overflow-auto">
-            <div className="w-full max-w-[789px] px-5 py-8 sm:px-8 sm:py-10 lg:px-10">
-              {/* ================= TITLE ================= */}
+          <header className="mx-[10px] mt-[105px] flex h-[56px] items-center justify-between rounded-[16px] bg-white px-3 lg:hidden">
 
-              <div className="text-center">
-                <h1 className="text-[28px] font-bold tracking-[-0.7px] sm:text-[30px]">
+            <div className="flex items-center gap-2">
+
+              <button className="flex h-8 w-8 items-center justify-center">
+                <ArrowLeft size={24} />
+              </button>
+
+              <span className="font-['Bricolage_Grotesque'] text-[20px] font-bold">
+                VedaAI
+              </span>
+
+            </div>
+
+            <div className="flex items-center gap-3">
+
+              <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-[#F6F6F6]">
+
+                <Bell size={21} />
+
+                <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-[#FF5623]" />
+
+              </div>
+
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F6F6F6]">
+                👨🏻
+              </div>
+
+              <Menu size={23} />
+
+            </div>
+
+          </header>
+
+          {/* CONTENT */}
+
+          <section className="flex justify-center px-[10px] pb-8 pt-[24px] lg:min-h-[calc(100vh-80px)] lg:px-0 lg:pb-0">
+
+            <div className="flex w-full max-w-[789px] flex-col items-center">
+
+              {/* TITLE */}
+
+              <div className="flex w-full flex-col items-center gap-2 text-center">
+
+                <h1 className="font-['Bricolage_Grotesque'] text-[24px] font-bold leading-[120%] tracking-[-0.04em] lg:text-[40px]">
+
                   Upload{" "}
-                  <span className="rounded-[5px] bg-[#fff0eb] px-1.5 text-[#ff5735]">
+
+                  <span className="rounded-[6px] bg-[#FFF0EB] px-2 text-[#FF5735]">
                     Question Paper &amp; Answer Sheets
                   </span>
+
                 </h1>
 
-                <p className="mt-2 text-[10px] text-[#555] sm:text-[11px]">
+                <p className="font-['Bricolage_Grotesque'] text-[14px] text-[#5E5E5E] lg:text-[20px]">
                   Upload both files to get started
                 </p>
+
               </div>
 
-              {/* ================= TEACHER IMAGE ================= */}
+              {/* TEACHER */}
 
-              <div className="relative mx-auto mt-5 flex h-[137px] w-[138px] items-center justify-center rounded-full bg-[#f7ddd5]">
-                <div className="flex h-[58px] w-[58px] items-center justify-center rounded-full border-[7px] border-[#ffd0c3] bg-[#f8eee9]">
-                  <div className="flex h-[40px] w-[32px] items-center justify-center rounded-[10px] bg-white text-[21px] shadow-sm">
+              <div className="relative mt-5 flex h-[110px] w-[110px] items-center justify-center lg:mt-6 lg:h-[137px] lg:w-[138px]">
+
+                <div className="absolute inset-0 rounded-full bg-[rgba(255,86,35,0.10)]" />
+
+                <div className="absolute inset-[12px] rounded-full bg-[rgba(255,86,35,0.26)]" />
+
+                <div className="relative flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-full bg-white lg:h-[88px] lg:w-[88px]">
+
+                  <span className="text-[42px] lg:text-[50px]">
                     👩🏻‍🏫
-                  </div>
+                  </span>
+
                 </div>
 
-                <span className="absolute right-[2px] top-[9px] h-2 w-2 rounded-full border border-[#ff6341] bg-white" />
+                <span className="absolute left-0 top-[26px] h-[10px] w-[10px] rounded-full bg-[#FB975D]" />
 
-                <span className="absolute left-[7px] top-[17px] h-2 w-2 rounded-full border border-[#ff6341] bg-white" />
+                <span className="absolute right-[5px] top-0 h-[10px] w-[10px] rounded-full bg-[#FB975D]" />
 
-                <span className="absolute right-[7px] bottom-[12px] h-2 w-2 rounded-full border border-[#ff6341] bg-white" />
+                <span className="absolute bottom-[26px] right-0 h-[10px] w-[10px] rounded-full bg-[#FC5E24]" />
 
-                <span className="absolute left-[18px] bottom-[2px] h-2 w-2 rounded-full border border-[#ff6341] bg-white" />
+                <span className="absolute bottom-0 left-[22px] h-[10px] w-[10px] rounded-full bg-[#FC5E24]" />
+
               </div>
 
-              {/* ================= UPLOAD BOXES ================= */}
+              {/* UPLOAD CONTAINER */}
 
-              <div className="mt-6 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              <div className="mt-3 flex w-full flex-col items-center rounded-[24px] bg-[rgba(255,255,255,0.5)] p-3 lg:mt-6 lg:flex-row lg:gap-3">
+
                 {/* QUESTION PAPER */}
 
-                <label
-                  className={`flex h-[140px] cursor-pointer flex-col items-center justify-center rounded-[12px] border border-dashed bg-white transition ${
-                    questionPaper
-                      ? "border-[#ff6341] bg-[#fffaf8]"
-                      : "border-[#d7d7d7] hover:border-[#ff6341]"
-                  }`}
-                >
+                <label className="flex h-[127px] w-full cursor-pointer items-center justify-center rounded-[20px] border-[1.5px] border-dashed border-[#CECECE] bg-white px-[10px] py-4 transition hover:border-[#FF6341] lg:h-[181px] lg:w-[374.5px]">
+
                   <input
                     type="file"
                     className="hidden"
-                    accept=".pdf,.png,.jpg,.jpeg"
+                    accept=".pdf,.png,.jpg,.jpeg,.webp"
                     onChange={handleQuestionPaper}
                   />
 
-                  <div
-                    className={`flex h-7 w-7 items-center justify-center rounded-md ${
-                      questionPaper
-                        ? "bg-[#fff0eb] text-[#ff5735]"
-                        : "bg-[#f4f4f4] text-[#292929]"
-                    }`}
-                  >
-                    {questionPaper ? (
-                      <Check size={14} />
-                    ) : (
-                      <Upload size={14} />
-                    )}
-                  </div>
+                  <div className="flex flex-col items-center gap-2">
 
-                  <p className="mt-2 text-[10px] font-medium">
-                    {questionPaper ? (
-                      <span className="text-[#ff5735]">
-                        {questionPaper.name}
-                      </span>
-                    ) : (
-                      <>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-[7px] bg-[#F3F3F3]">
+                      <Upload size={27} />
+                    </div>
+
+                    <div className="flex flex-col items-center gap-0.5">
+
+                      <p className="font-['Bricolage_Grotesque'] text-[18px] font-bold leading-[140%] tracking-[-0.04em]">
+
                         Upload{" "}
-                        <span className="text-[#ff5735]">
+
+                        <span className="text-[#FF5735]">
                           Question Paper
                         </span>
-                      </>
-                    )}
-                  </p>
 
-                  <p className="mt-1 text-[7px] text-gray-400">
-                    {questionPaper
-                      ? `${(questionPaper.size / 1024 / 1024).toFixed(2)} MB`
-                      : "PDF, PNG, JPG • Max 10MB"}
-                  </p>
+                      </p>
+
+                      <p className="font-['Bricolage_Grotesque'] text-[12px] leading-[140%] text-[rgba(94,94,94,0.55)]">
+                        {questionPaper
+                          ? questionPaper.name
+                          : "Max 10MB"}
+                      </p>
+
+                    </div>
+
+                  </div>
+
                 </label>
 
                 {/* ANSWER SHEET */}
 
-                <label
-                  className={`flex h-[140px] cursor-pointer flex-col items-center justify-center rounded-[12px] border border-dashed bg-white transition ${
-                    answerSheet
-                      ? "border-[#ff6341] bg-[#fffaf8]"
-                      : "border-[#d7d7d7] hover:border-[#ff6341]"
-                  }`}
-                >
+                <label className="mt-3 flex h-[127px] w-full cursor-pointer items-center justify-center rounded-[20px] border-[1.5px] border-dashed border-[#CECECE] bg-white px-[10px] py-4 transition hover:border-[#FF6341] lg:mt-0 lg:h-[181px] lg:w-[374.5px]">
+
                   <input
                     type="file"
                     className="hidden"
-                    accept=".pdf,.png,.jpg,.jpeg"
+                    accept=".pdf,.png,.jpg,.jpeg,.webp"
                     onChange={handleAnswerSheet}
                   />
 
-                  <div
-                    className={`flex h-7 w-7 items-center justify-center rounded-md ${
-                      answerSheet
-                        ? "bg-[#fff0eb] text-[#ff5735]"
-                        : "bg-[#f4f4f4] text-[#292929]"
-                    }`}
-                  >
-                    {answerSheet ? (
-                      <Check size={14} />
-                    ) : (
-                      <Upload size={14} />
-                    )}
-                  </div>
+                  <div className="flex flex-col items-center gap-2">
 
-                  <p className="mt-2 text-[10px] font-medium">
-                    {answerSheet ? (
-                      <span className="text-[#ff5735]">
-                        {answerSheet.name}
-                      </span>
-                    ) : (
-                      <>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-[7px] bg-[#F3F3F3]">
+                      <Upload size={27} />
+                    </div>
+
+                    <div className="flex flex-col items-center gap-0.5">
+
+                      <p className="font-['Bricolage_Grotesque'] text-[18px] font-bold leading-[140%] tracking-[-0.04em]">
+
                         Upload{" "}
-                        <span className="text-[#ff5735]">
+
+                        <span className="text-[#FF5735]">
                           Answer Sheet
                         </span>
-                      </>
-                    )}
-                  </p>
 
-                  <p className="mt-1 text-[7px] text-gray-400">
-                    {answerSheet
-                      ? `${(answerSheet.size / 1024 / 1024).toFixed(2)} MB`
-                      : "PDF, PNG, JPG • Max 10MB"}
-                  </p>
+                      </p>
+
+                      <p className="font-['Bricolage_Grotesque'] text-[12px] leading-[140%] text-[rgba(94,94,94,0.55)]">
+                        {answerSheet
+                          ? answerSheet.name
+                          : "Max 10MB"}
+                      </p>
+
+                    </div>
+
+                  </div>
+
                 </label>
+
               </div>
 
-              {/* ================= START MAPPING ================= */}
+              {/* START MAPPING */}
 
-              <div className="mt-7 flex justify-center">
+              <div className="mt-5 flex w-full flex-col items-center gap-3">
+
                 <button
                   onClick={handleStartMapping}
                   disabled={!canStart}
-                  className={`flex h-[30px] items-center gap-2 rounded-full px-4 text-[9px] font-medium transition ${
+                  className={`flex h-[44px] w-[161px] items-center justify-center gap-2 rounded-full px-5 font-['Bricolage_Grotesque'] text-[14px] font-medium transition ${
                     canStart
-                      ? "bg-[#292929] text-white hover:bg-black"
-                      : "cursor-not-allowed bg-[#bdbdbd] text-[#eeeeee]"
+                      ? "bg-[#303030] text-white hover:bg-black"
+                      : "bg-[#303030] text-white opacity-25"
                   }`}
                 >
                   Start Mapping
 
-                  <span className="text-[13px]">
+                  <span className="text-[20px] leading-none">
                     →
                   </span>
+
                 </button>
+
+                <p className="max-w-[400px] text-center font-['Bricolage_Grotesque'] text-[14px] leading-[22px] tracking-[-0.04em] text-[rgba(94,94,94,0.8)]">
+                  Once both files are uploaded, you'll able to map answers with questions!
+                </p>
+
               </div>
 
-              {/* ================= DESCRIPTION ================= */}
-
-              <p className="mx-auto mt-4 max-w-[280px] text-center text-[8px] leading-3 text-[#888]">
-                Once both files are uploaded, you'll be able
-                to map answers with questions!
-              </p>
             </div>
+
           </section>
+
+          {/* MOBILE HOME INDICATOR */}
+
+          <div className="fixed bottom-0 left-0 right-0 flex h-4 items-center justify-center lg:hidden">
+            <div className="h-0 w-[128px] border-t-[5px] border-[#303030]/50" />
+          </div>
+
         </div>
+
       </div>
+
     </main>
   );
 }
