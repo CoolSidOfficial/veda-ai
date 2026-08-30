@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+
 import UploadScreen from "./components/UploadScreen";
 import ProcessingScreen from "./components/ProcessingScreen";
+import QuestionAnswerScreen from "./components/QuestionAnswerScreen";
 
 export default function Page() {
-  const [screen, setScreen] = useState("upload");
+  const [screen, setScreen] = useState("results");
 
   return (
     <>
@@ -15,7 +17,13 @@ export default function Page() {
         />
       )}
 
-      {screen === "processing" && <ProcessingScreen />}
+      {screen === "processing" && (
+        <ProcessingScreen />
+      )}
+
+      {screen === "results" && (
+        <QuestionAnswerScreen />
+      )}
     </>
   );
 }
